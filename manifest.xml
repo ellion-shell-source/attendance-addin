@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+           xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+           xsi:type="TaskPaneApp">
+  <Id>a8850904-ca00-4ac6-8514-f3cc0a46cceb</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>Євгеній Шелест</ProviderName>
+  <DefaultLocale>uk-UA</DefaultLocale>
+  <DisplayName DefaultValue="Відвідування"/>
+  <Description DefaultValue="Зручна панель для внесення відвідування у власному аркуші Attendance 2.0."/>
+  <IconUrl DefaultValue="https://ellion-shell-source.github.io/attendance-addin/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://ellion-shell-source.github.io/attendance-addin/icon-64.png"/>
+  <SupportUrl DefaultValue="https://ellion-shell-source.github.io/attendance-addin/taskpane.html"/>
+  <AppDomains>
+    <AppDomain>https://ellion-shell-source.github.io</AppDomain>
+  </AppDomains>
+  <Hosts>
+    <Host Name="Workbook"/>
+  </Hosts>
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://ellion-shell-source.github.io/attendance-addin/taskpane.html"/>
+  </DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Workbook">
+        <DesktopFormFactor>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="Att.Group">
+                <Label resid="Att.GroupLabel"/>
+                <Icon>
+                  <bt:Image size="16" resid="Att.Icon16"/>
+                  <bt:Image size="32" resid="Att.Icon32"/>
+                  <bt:Image size="80" resid="Att.Icon80"/>
+                </Icon>
+                <Control xsi:type="Button" id="Att.Button">
+                  <Label resid="Att.ButtonLabel"/>
+                  <Supertip>
+                    <Title resid="Att.ButtonLabel"/>
+                    <Description resid="Att.ButtonTip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Att.Icon16"/>
+                    <bt:Image size="32" resid="Att.Icon32"/>
+                    <bt:Image size="80" resid="Att.Icon80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>AttPane</TaskpaneId>
+                    <SourceLocation resid="Att.Url"/>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Att.Icon16" DefaultValue="https://ellion-shell-source.github.io/attendance-addin/icon-16.png"/>
+        <bt:Image id="Att.Icon32" DefaultValue="https://ellion-shell-source.github.io/attendance-addin/icon-32.png"/>
+        <bt:Image id="Att.Icon80" DefaultValue="https://ellion-shell-source.github.io/attendance-addin/icon-80.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="Att.Url" DefaultValue="https://ellion-shell-source.github.io/attendance-addin/taskpane.html"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="Att.GroupLabel" DefaultValue="Відвідування"/>
+        <bt:String id="Att.ButtonLabel" DefaultValue="Відвідування"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="Att.ButtonTip" DefaultValue="Відкрити панель внесення відвідування"/>
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>

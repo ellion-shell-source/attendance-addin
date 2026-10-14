@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Відвідування</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+  :root{
+    --bg:#fff; --ink:#1f2328; --mute:#6b7280; --line:#e3e6ea; --soft:#f5f6f8;
+    --accent:#107c41;
+    --p:#d7efdc; --p-ink:#14532d;
+    --z:#fdf0b3; --z-ink:#7a5b00;
+    --v:#f8d4d4; --v-ink:#8a1c1c;
+    --pz:#e6d9f5; --pz-ink:#4b2a7a;
+    --c:#dbe7f7; --c-ink:#1e3a6b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.35 "Segoe UI",system-ui,sans-serif}
+  body{padding:10px 12px 70px}
+  button{font:inherit;cursor:pointer}
+  h1{font-size:15px;margin:0}
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .icon-btn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:3px 8px;color:var(--mute)}
+  .icon-btn:hover{background:var(--soft)}
+  select{font:inherit;border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:#fff;width:100%;color:var(--ink)}
+  .row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+  .row select{flex:1;min-width:0}
+  .nav{border:1px solid var(--line);background:#fff;border-radius:6px;width:34px;height:32px;font-size:18px;line-height:1}
+  .nav:disabled{opacity:.35;cursor:default}
+  .today-btn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:0 8px;height:32px;font-size:12px}
+  .tabs{display:flex;border-bottom:1px solid var(--line);margin:10px 0 8px}
+  .tab{flex:1;background:none;border:0;border-bottom:2px solid transparent;padding:7px 2px;color:var(--mute)}
+  .tab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+  .meta{display:flex;justify-content:space-between;color:var(--mute);font-size:12px;margin:4px 0 8px}
+  .bar{height:4px;background:var(--soft);border-radius:2px;overflow:hidden;margin:2px 0 8px}
+  .bar i{display:block;height:100%;background:var(--accent);width:0}
+  .quick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:4px 10px;font-size:12.5px}
+  .chip:hover{background:var(--soft)}
+  .chip.c{background:var(--c);color:var(--c-ink);border-color:transparent}
+  .quick .label{width:100%;font-size:12px;color:var(--mute);margin-top:2px}
+  .stu{border-top:1px solid var(--line);padding:7px 0}
+  .stu:first-child{border-top:0}
+  .name{display:flex;justify-content:space-between;gap:6px;margin-bottom:5px}
+  .name b{font-weight:600}
+  .rate{color:var(--mute);font-size:12px;white-space:nowrap}
+  .btns{display:grid;grid-template-columns:repeat(4,1fr) 34px;gap:5px}
+  .m{border:1px solid var(--line);background:#fff;border-radius:6px;padding:7px 0;font-weight:600;color:var(--mute)}
+  .m:hover{background:var(--soft)}
+  .m.on.P{background:var(--p);color:var(--p-ink);border-color:transparent}
+  .m.on.Z{background:var(--z);color:var(--z-ink);border-color:transparent}
+  .m.on.V{background:var(--v);color:var(--v-ink);border-color:transparent}
+  .m.on.PZ{background:var(--pz);color:var(--pz-ink);border-color:transparent}
+  .m.clr{font-weight:400;color:var(--mute)}
+  .mins{display:flex;gap:5px;margin-top:5px}
+  .mins .m{flex:1;padding:5px 0;font-size:12.5px}
+  .badge{display:inline-block;background:var(--c);color:var(--c-ink);border-radius:6px;padding:1px 7px;font-size:12px;font-weight:600}
+  .empty,.note{color:var(--mute);font-size:12.5px;padding:10px 0}
+  .err{background:#fde8e8;color:#8a1c1c;border-radius:8px;padding:10px;margin:8px 0}
+  .toast{position:fixed;left:10px;right:10px;bottom:10px;background:#1f2328;color:#fff;border-radius:8px;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px}
+  .toast button{background:none;border:0;color:#9ecbff;font-weight:600}
+  .hidden{display:none!important}
+  /* overview */
+  .strip{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+  .d{border:1px solid var(--line);background:var(--soft);border-radius:6px;padding:5px 0;text-align:center;font-size:12px;color:var(--mute)}
+  .d small{display:block;font-size:10.5px}
+  .d.full{background:var(--p);color:var(--p-ink);border-color:transparent}
+  .d.part{background:var(--z);color:var(--z-ink);border-color:transparent}
+  .d.sel{outline:2px solid var(--accent)}
+  .legend{display:flex;gap:10px;font-size:11.5px;color:var(--mute);margin:8px 0 0;flex-wrap:wrap}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+  /* signals */
+  .sig{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:7px}
+  .sig .t{display:flex;justify-content:space-between;gap:6px}
+  .sig ul{margin:5px 0 0;padding-left:17px;color:var(--ink);font-size:12.5px}
+  .sig .sub{color:var(--mute);font-size:12px}
+  .tog{display:flex;align-items:center;gap:6px;font-size:12.5px;margin:2px 0 8px}
+  .settings{background:var(--soft);border-radius:8px;padding:10px;margin-bottom:8px}
+  .settings label{font-size:12px;color:var(--mute);display:block;margin-bottom:4px}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Відвідування</h1>
+  <div>
+    <button class="icon-btn" id="btnRefresh" title="Оновити дані з таблиці">⟳</button>
+    <button class="icon-btn" id="btnSettings" title="Налаштування">⚙</button>
+  </div>
+</div>
+
+<div id="settings" class="settings hidden">
+  <label for="sheetSel">Мій аркуш</label>
+  <select id="sheetSel"></select>
+</div>
+<div id="err" class="err hidden"></div>
+
+<div id="app" class="hidden">
+  <div class="row">
+    <button class="nav" id="prev" title="Попередній день">‹</button>
+    <select id="dateSel"></select>
+    <button class="nav" id="next" title="Наступний день">›</button>
+    <button class="today-btn" id="todayBtn">Сьогодні</button>
+  </div>
+  <select id="courseSel"></select>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="marks">Відмітки</button>
+    <button class="tab" data-tab="signals">Сигнали</button>
+    <button class="tab" data-tab="overview">Огляд днів</button>
+  </div>
+
+  <section id="tab-marks">
+    <div class="meta"><span id="progText"></span><span id="classSummary"></span></div>
+    <div class="bar"><i id="progBar"></i></div>
+    <div class="quick">
+      <button class="chip" id="fillP">Решту — присутні (П)</button>
+      <div class="label">Заняття не відбулося для всього курсу:</div>
+      <button class="chip c" data-all="Т">Т · тривога</button>
+      <button class="chip c" data-all="ХВ">ХВ · хвороба вчителя</button>
+      <button class="chip c" data-all="БЗ">БЗ · захід</button>
+      <button class="chip c" data-all="С">С · скасовано</button>
+      <button class="chip" id="clearDay">Очистити день</button>
+    </div>
+    <div id="list"></div>
+  </section>
+
+  <section id="tab-signals" class="hidden">
+    <label class="tog"><input type="checkbox" id="sigAll"> усі мої курси</label>
+    <div class="note" id="sigRange"></div>
+    <div id="sigList"></div>
+  </section>
+
+  <section id="tab-overview" class="hidden">
+    <div class="note">Дні вибраного курсу. Натисніть на день, щоб перейти до нього.</div>
+    <div class="strip" id="strip"></div>
+    <div class="legend">
+      <span><i style="background:var(--p)"></i>внесено всім</span>
+      <span><i style="background:var(--z)"></i>внесено не всім</span>
+      <span><i style="background:var(--soft);border:1px solid var(--line)"></i>порожньо</span>
+    </div>
+  </section>
+</div>
+
+<div id="toast" class="toast hidden"><span id="toastText"></span><button id="undoBtn">Скасувати</button></div>
+
+<script>
+'use strict';
+const DEFAULT_SHEET = 'Вч · Євгеній';
+const FIRST_ROW = 5, LAST_ROW = 204;          // рядки з учнями (Excel, 1-based)
+const DATE_ROW = 4, FIRST_COL = 2;            // C = індекс 2 (0-based)
+const N_DATES = 55;                           // C..BE
+const COURSE_CODES = {'Т':'тривога','ХВ':'хвороба вчителя','БЗ':'захід Britannica','С':'скасовано/перенесено'};
+const LATE = ['З5','З10','З15','З20','З30+'];
+const WD = ['нд','пн','вт','ср','чт','пт','сб'];
+
+const S = {
+  sheetName: null, dates: [], rows: [], courses: [],
+  di: 0, course: '', tab: 'marks', undo: null, lateOpen: null
+};
+const $ = id => document.getElementById(id);
+const store = {
+  get(k){ try{ return localStorage.getItem(k) }catch(e){ return null } },
+  set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} }
+};
+
+/* ---------- допоміжне ---------- */
+const serialToDate = n => new Date(Math.round((n - 25569) * 86400000));       // UTC-полудень не потрібен: беремо UTC-частини
+const pad = n => String(n).padStart(2,'0');
+function fmtDate(d){ return `${pad(d.getUTCDate())}.${pad(d.getUTCMonth()+1)}`; }
+function fmtFull(d){ return `${WD[d.getUTCDay()]} ${fmtDate(d)}`; }
+function todayUTC(){ const t = new Date(); return Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()); }
+const isLate = v => typeof v === 'string' && v.startsWith('З');
+function bucket(v){
+  if (v === 'П') return 'P';
+  if (isLate(v)) return 'Z';
+  if (v === 'В') return 'V';
+  if (v === 'ПЗ') return 'PZ';
+  return '';
+}
+function showError(msg){ const e=$('err'); e.textContent=msg; e.classList.remove('hidden'); }
+function clearError(){ $('err').classList.add('hidden'); }
+
+/* ---------- читання з Excel ---------- */
+async function listSheets(){
+  return Excel.run(async ctx => {
+    const c = ctx.workbook.worksheets; c.load('items/name'); await ctx.sync();
+    return c.items.map(s => s.name);
+  });
+}
+async function loadData(){
+  clearError();
+  const name = S.sheetName;
+  const lastCol = FIRST_COL + N_DATES - 1;
+  const data = await Excel.run(async ctx => {
+    const ws = ctx.workbook.worksheets.getItem(name);
+    const rng = ws.getRangeByIndexes(DATE_ROW-1, 0, LAST_ROW-DATE_ROW+1, lastCol+1);
+    rng.load('values'); await ctx.sync();
+    return rng.values;
+  });
+  const head = data[0];
+  S.dates = [];
+  for (let i=0;i<N_DATES;i++){
+    const v = head[FIRST_COL+i];
+    S.dates.push(typeof v === 'number' ? serialToDate(v) : null);
+  }
+  S.rows = [];
+  for (let r=1; r<data.length; r++){
+    const course = String(data[r][0] ?? '').trim();
+    const student = String(data[r][1] ?? '').trim();
+    if (!course || !student) continue;
+    S.rows.push({
+      row: DATE_ROW + r,                         // номер рядка в Excel
+      course, student,
+      marks: data[r].slice(FIRST_COL, FIRST_COL+N_DATES).map(x => x === '' ? '' : String(x))
+    });
+  }
+  const seen = new Map();
+  S.rows.forEach(x => seen.set(x.course, (seen.get(x.course)||0)+1));
+  S.courses = [...seen.entries()].map(([name,n]) => ({name,n}));
+  if (!S.courses.find(c => c.name === S.course)) S.course = S.courses[0]?.name || '';
+}
+
+/* ---------- запис ---------- */
+async function writeCells(changes){            // changes: [{row, di, value}]
+  await Excel.run(async ctx => {
+    const ws = ctx.workbook.worksheets.getItem(S.sheetName);
+    for (const ch of changes){
+      ws.getRangeByIndexes(ch.row-1, FIRST_COL+ch.di, 1, 1).values = [[ch.value]];
+    }
+    await ctx.sync();
+  });
+}
+async function apply(changes, label){
+  const eff = changes.filter(ch => {
+    const r = S.rows.find(x => x.row === ch.row);
+    return r && r.marks[ch.di] !== ch.value;
+  });
+  if (!eff.length) return;
+  const prev = eff.map(ch => {
+    const r = S.rows.find(x => x.row === ch.row);
+    return {row: ch.row, di: ch.di, value: r.marks[ch.di]};
+  });
+  try{
+    await writeCells(eff);
+  }catch(e){
+    showError('Не вдалося записати в таблицю: ' + (e.message || e)); return;
+  }
+  eff.forEach(ch => { S.rows.find(x => x.row === ch.row).marks[ch.di] = ch.value; });
+  S.undo = {prev, label};
+  render();
+  toast(label);
+}
+let toastTimer;
+function toast(text){
+  $('toastText').textContent = text;
+  $('toast').classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $('toast').classList.add('hidden'), 7000);
+}
+async function undo(){
+  if (!S.undo) return;
+  const u = S.undo; S.undo = null;
+  $('toast').classList.add('hidden');
+  try{
+    await writeCells(u.prev);
+  }catch(e){ showError('Не вдалося скасувати: ' + (e.message||e)); return; }
+  u.prev.forEach(ch => { S.rows.find(x => x.row === ch.row).marks[ch.di] = ch.value; });
+  render();
+}
+
+/* ---------- обчислення ---------- */
+const courseRows = () => S.rows.filter(r => r.course === S.course);
+function rate(r){
+  let p=0,z=0,v=0,pz=0;
+  r.marks.forEach(m => { if (m==='П') p++; else if (isLate(m)) z++; else if (m==='В') v++; else if (m==='ПЗ') pz++; });
+  const t = p+z+v+pz;
+  return t ? Math.round((p+z)/t*100) : null;
+}
+function dayStatus(rows, di){
+  const filled = rows.filter(r => r.marks[di] !== '').length;
+  return filled === 0 ? 'empty' : filled === rows.length ? 'full' : 'part';
+}
+
+/* ---------- відображення ---------- */
+function render(){
+  if (!S.courses.length){
+    $('app').classList.add('hidden');
+    showError(`На аркуші «${S.sheetName}» не знайдено курсів та учнів у стовпцях A–B.`);
+    return;
+  }
+  $('app').classList.remove('hidden');
+
+  // дати
+  const ds = $('dateSel');
+  if (ds.options.length !== S.dates.length){
+    ds.innerHTML = '';
+    S.dates.forEach((d,i) => {
+      if (!d) return;
+      const o = document.createElement('option'); o.value = i; o.textContent = fmtFull(d); ds.appendChild(o);
+    });
+  }
+  ds.value = S.di;
+  $('prev').disabled = !S.dates.slice(0,S.di).some(Boolean);
+  $('next').disabled = !S.dates.slice(S.di+1).some(Boolean);
+
+  // курси
+  const cs = $('courseSel');
+  cs.innerHTML = '';
+  S.courses.forEach(c => {
+    const o = document.createElement('option'); o.value = c.name; o.textContent = `${c.name} (${c.n})`; cs.appendChild(o);
+  });
+  cs.value = S.course;
+
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === S.tab));
+  ['marks','signals','overview'].forEach(t => $('tab-'+t).classList.toggle('hidden', t !== S.tab));
+  if (S.tab === 'marks') renderMarks();
+  if (S.tab === 'signals') renderSignals();
+  if (S.tab === 'overview') renderOverview();
+}
+
+function renderMarks(){
+  const rows = courseRows();
+  const di = S.di;
+  const filled = rows.filter(r => r.marks[di] !== '').length;
+  $('progText').textContent = `Внесено ${filled} з ${rows.length}`;
+  $('progBar').style.width = rows.length ? (filled/rows.length*100)+'%' : '0';
+  const sum = {P:0,Z:0,V:0,PZ:0};
+  rows.forEach(r => { const b = bucket(r.marks[di]); if (b) sum[b]++; });
+  $('classSummary').textContent = filled ? `П ${sum.P} · З ${sum.Z} · В ${sum.V} · ПЗ ${sum.PZ}` : '';
+
+  const list = $('list'); list.innerHTML = '';
+  rows.forEach(r => {
+    const v = r.marks[di];
+    const b = bucket(v);
+    const el = document.createElement('div'); el.className = 'stu';
+    const rt = rate(r);
+    const name = document.createElement('div'); name.className = 'name';
+    name.innerHTML = `<b></b><span class="rate"></span>`;
+    name.firstChild.textContent = r.student;
+    const rateEl = name.lastChild;
+    if (!b && v) rateEl.innerHTML = `<span class="badge">${v}</span>`;
+    else rateEl.textContent = rt === null ? '' : `${rt}% за період`;
+    el.appendChild(name);
+
+    const btns = document.createElement('div'); btns.className = 'btns';
+    const mk = (label, cls, on, handler, title) => {
+      const x = document.createElement('button');
+      x.className = 'm ' + cls + (on ? ' on' : ''); x.textContent = label; if (title) x.title = title;
+      x.addEventListener('click', handler); return x;
+    };
+    btns.appendChild(mk('П','P', v==='П', () => setMark(r,'П'), 'Присутній'));
+    btns.appendChild(mk(isLate(v) ? v : 'З','Z', isLate(v), () => { S.lateOpen = S.lateOpen === r.row ? null : r.row; render(); }, 'Запізнився'));
+    btns.appendChild(mk('В','V', v==='В', () => setMark(r,'В'), 'Відсутній'));
+    btns.appendChild(mk('ПЗ','PZ', v==='ПЗ', () => setMark(r,'ПЗ'), 'У школі, але пропустив заняття'));
+    btns.appendChild(mk('×','clr', false, () => setMark(r,''), 'Очистити'));
+    el.appendChild(btns);
+
+    if (S.lateOpen === r.row){
+      const m = document.createElement('div'); m.className = 'mins';
+      LATE.forEach(code => m.appendChild(mk(code.slice(1)+' хв','Z', v===code, () => { S.lateOpen = null; setMark(r, code); })));
+      el.appendChild(m);
+    }
+    list.appendChild(el);
+  });
+}
+
+function setMark(r, value){
+  S.lateOpen = null;
+  const d = S.dates[S.di];
+  apply([{row:r.row, di:S.di, value}], value ? `${r.student}: ${value} (${fmtDate(d)})` : `${r.student}: очищено (${fmtDate(d)})`);
+}
+
+function renderOverview(){
+  const rows = courseRows();
+  const strip = $('strip'); strip.innerHTML = '';
+  S.dates.forEach((d,i) => {
+    if (!d) return;
+    const st = dayStatus(rows, i);
+    const b = document.createElement('button');
+    b.className = 'd ' + st + (i === S.di ? ' sel' : '');
+    b.innerHTML = `${fmtDate(d)}<small>${WD[d.getUTCDay()]}</small>`;
+    b.addEventListener('click', () => { S.di = i; S.tab = 'marks'; render(); });
+    strip.appendChild(b);
+  });
+}
+
+function renderSignals(){
+  const all = $('sigAll').checked;
+  const end = S.dates[S.di].getTime();
+  const start = end - 13*86400000;
+  $('sigRange').textContent = `Період: ${fmtDate(new Date(start))} – ${fmtDate(new Date(end))} (14 днів, до вибраної дати)`;
+  const rows = all ? S.rows : courseRows();
+  const out = [];
+  rows.forEach(r => {
+    let z=0,v=0,pz=0;
+    S.dates.forEach((d,i) => {
+      if (!d) return; const t = d.getTime(); if (t < start || t > end) return;
+      const m = r.marks[i];
+      if (isLate(m)) z++; else if (m==='В') v++; else if (m==='ПЗ') pz++;
+    });
+    const msgs = [];
+    if (z >= 3) msgs.push(`${z} запізнення — тьюторський check-in`);
+    else if (z >= 2) msgs.push(`${z} запізнення — помітити патерн`);
+    if (v >= 2) msgs.push(`${v} відсутності — перевірити причину та ризик втрати навчання`);
+    if (pz >= 1) msgs.push(`${pz} × ПЗ — тьюторський сигнал одразу`);
+    if (msgs.length) out.push({r, msgs, w: (z>=3?2:z>=2?1:0)+(v>=2?2:0)+(pz>=1?3:0)});
+  });
+  out.sort((a,b) => b.w - a.w);
+  const box = $('sigList'); box.innerHTML = '';
+  if (!out.length){ box.innerHTML = '<div class="empty">Сигналів за цей період немає.</div>'; return; }
+  out.forEach(o => {
+    const d = document.createElement('div'); d.className = 'sig';
+    d.innerHTML = `<div class="t"><b></b><span class="sub"></span></div><ul></ul>`;
+    d.querySelector('b').textContent = o.r.student;
+    d.querySelector('.sub').textContent = all ? o.r.course : '';
+    o.msgs.forEach(m => { const li = document.createElement('li'); li.textContent = m; d.querySelector('ul').appendChild(li); });
+    box.appendChild(d);
+  });
+}
+
+/* ---------- події ---------- */
+function stepDate(dir){
+  let i = S.di + dir;
+  while (i >= 0 && i < S.dates.length && !S.dates[i]) i += dir;
+  if (i >= 0 && i < S.dates.length){ S.di = i; S.lateOpen = null; render(); }
+}
+function pickToday(){
+  const t = todayUTC(); let best = -1;
+  S.dates.forEach((d,i) => { if (d && d.getTime() <= t) best = i; });
+  S.di = best >= 0 ? best : S.dates.findIndex(Boolean);
+}
+function wire(){
+  $('prev').onclick = () => stepDate(-1);
+  $('next').onclick = () => stepDate(1);
+  $('todayBtn').onclick = () => { pickToday(); S.lateOpen = null; render(); };
+  $('dateSel').onchange = e => { S.di = +e.target.value; S.lateOpen = null; render(); };
+  $('courseSel').onchange = e => { S.course = e.target.value; S.lateOpen = null; store.set('att.course', S.course); render(); };
+  document.querySelectorAll('.tab').forEach(t => t.onclick = () => { S.tab = t.dataset.tab; render(); });
+  $('sigAll').onchange = renderSignals;
+  $('undoBtn').onclick = undo;
+  $('btnRefresh').onclick = async () => { try{ await loadData(); render(); }catch(e){ showError(e.message||String(e)); } };
+  $('btnSettings').onclick = () => $('settings').classList.toggle('hidden');
+  $('sheetSel').onchange = async e => {
+    S.sheetName = e.target.value; store.set('att.sheet', S.sheetName);
+    try{ await loadData(); pickToday(); render(); }catch(err){ showError(err.message||String(err)); }
+  };
+  $('fillP').onclick = () => {
+    const d = S.dates[S.di];
+    apply(courseRows().filter(r => r.marks[S.di]==='').map(r => ({row:r.row, di:S.di, value:'П'})),
+          `Решту відмічено «П» (${fmtDate(d)})`);
+  };
+  document.querySelectorAll('[data-all]').forEach(b => b.onclick = () => {
+    const code = b.dataset.all, d = S.dates[S.di];
+    const rows = courseRows();
+    const had = rows.filter(r => r.marks[S.di] !== '' && r.marks[S.di] !== code).length;
+    if (had && !confirm(`У ${had} учнів на цю дату вже є відмітки. Замінити їх на «${code}» для всього курсу?`)) return;
+    apply(rows.map(r => ({row:r.row, di:S.di, value:code})), `Курс: ${code} (${fmtDate(d)})`);
+  });
+  $('clearDay').onclick = () => {
+    const rows = courseRows().filter(r => r.marks[S.di] !== '');
+    if (!rows.length) return;
+    if (!confirm(`Очистити відмітки за ${fmtDate(S.dates[S.di])} для всього курсу (${rows.length})?`)) return;
+    apply(rows.map(r => ({row:r.row, di:S.di, value:''})), `Очищено день ${fmtDate(S.dates[S.di])}`);
+  };
+}
+
+async function init(){
+  wire();
+  try{
+    const names = await listSheets();
+    const sel = $('sheetSel');
+    names.filter(n => n.startsWith('Вч')).forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); });
+    const saved = store.get('att.sheet');
+    S.sheetName = names.includes(saved) ? saved : names.includes(DEFAULT_SHEET) ? DEFAULT_SHEET : null;
+    if (!S.sheetName){
+      $('settings').classList.remove('hidden');
+      showError(`Не знайдено аркуш «${DEFAULT_SHEET}». Виберіть свій аркуш у налаштуваннях.`);
+      if (sel.options.length) { sel.selectedIndex = -1; }
+      return;
+    }
+    sel.value = S.sheetName;
+    S.course = store.get('att.course') || '';
+    await loadData(); pickToday(); render();
+  }catch(e){ showError('Помилка: ' + (e.message || e)); }
+}
+
+if (typeof Office !== 'undefined' && Office.onReady){
+  Office.onReady(info => {
+    if (info.host === Office.HostType.Excel) init();
+    else showError('Ця панель працює лише в Excel.');
+  });
+} else {
+  showError('Не вдалося завантажити Office.js. Відкрийте надбудову з Excel.');
+}
+</script>
+</body>
+</html>
