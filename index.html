@@ -34,7 +34,7 @@
   .nav:disabled{opacity:.35;cursor:default}
   .today-btn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:0 8px;height:32px;font-size:12px}
   .tabs{display:flex;border-bottom:1px solid var(--line);margin:10px 0 8px}
-  .tab{flex:1;background:none;border:0;border-bottom:2px solid transparent;padding:7px 1px;color:var(--mute);font-size:13px}
+  .tab{flex:1;background:none;border:0;border-bottom:2px solid transparent;padding:7px 0;color:var(--mute);font-size:12px}
   .tab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
   .tab .cnt{display:inline-block;background:#f0b429;color:#4a3300;border-radius:9px;padding:0 6px;font-size:11px;margin-left:3px;font-weight:600}
   .meta{display:flex;justify-content:space-between;color:var(--mute);font-size:12px;margin:2px 0 4px}
@@ -131,6 +131,36 @@
   .btn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 10px;margin-top:8px}
   .btn:hover{background:var(--soft)}
 
+  /* тьютор */
+  .tcard{border:1px solid var(--grid);border-radius:8px;padding:8px 10px;margin-bottom:7px;cursor:pointer;background:#fff}
+  .tcard:hover{background:#fafbfc}
+  .tcard .h{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+  .tcard .h b{font-size:13.5px}
+  .tcard .pct{font-weight:700}
+  .tcard .cn{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
+  .pill{border-radius:5px;padding:0 6px;font-size:11.5px;font-weight:600}
+  .pill.P{background:var(--p);color:var(--p-ink)} .pill.Z{background:var(--z);color:var(--z-ink)}
+  .pill.V{background:var(--v);color:var(--v-ink)} .pill.PZ{background:var(--pz);color:var(--pz-ink)}
+  .pill.N{background:#eceef1;color:#4b5563} .pill.sig{background:#fff;border:1px solid #e0a43a;color:#8a5a00}
+  .back{border:0;background:none;color:var(--accent);padding:0;margin:0 0 6px;font-weight:600}
+  table.heat{border-collapse:collapse;table-layout:fixed;width:100%;margin:4px 0 4px;border:1.5px solid var(--grid)}
+  .heat th,.heat td{border:1px solid var(--grid);padding:0;text-align:center;height:22px;font-size:11px}
+  .heat th{background:var(--soft);color:var(--mute);font-weight:600;height:auto;padding:2px 0;line-height:1.15}
+  .heat th small{display:block;font-weight:400;font-size:9.5px}
+  .heat td.lbl,.heat th.lbl{width:34%;text-align:left;padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px}
+  .heat td.P{background:var(--p);color:var(--p-ink)} .heat td.Z{background:var(--z);color:var(--z-ink)}
+  .heat td.V{background:var(--v);color:var(--v-ink)} .heat td.PZ{background:var(--pz);color:var(--pz-ink)}
+  .heat td.cT{background:var(--cT);color:var(--cT-ink)} .heat td.cBZ{background:var(--cBZ);color:var(--cBZ-ink)}
+  .heat td.cHV{background:var(--cHV);color:var(--cHV-ink)} .heat td.cS{background:var(--cS);color:var(--cS-ink)}
+  .heat td.here{background:#e3f4e8;color:#14532d} .heat td.away{background:#eceef1;color:#4b5563} .heat td.later{background:#fdf0b3;color:#7a5b00}
+  .heat tr.pres td.lbl{font-weight:600;background:var(--soft)}
+  .winnav{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mute)}
+  .chk{margin:3px 0;font-size:12.5px;padding-left:2px}
+  .chk i{font-style:normal;color:var(--mute)}
+  .prog{height:4px;background:var(--soft);border-radius:2px;overflow:hidden;margin:6px 0}
+  .prog i{display:block;height:100%;background:var(--accent);width:0}
+  input.txt{font:inherit;border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%}
+
   /* налаштування */
   .settings{background:var(--soft);border-radius:8px;padding:10px;margin-bottom:8px}
   .settings label.l{font-size:12px;color:var(--mute);display:block;margin-bottom:4px}
@@ -153,6 +183,9 @@
 <div id="settings" class="settings hidden">
   <label class="l" for="sheetSel">Мій аркуш</label>
   <select id="sheetSel"></select>
+  <h4>Тьюторство</h4>
+  <label class="l" for="tutorName">Моє ім'я в «Учні 2.0» (як у стовпці «Тьютор»)</label>
+  <input class="txt" id="tutorName" placeholder="Прізвище Ім'я">
   <h4>Розклад курсів (дні тижня)</h4>
   <table class="sched"><thead><tr><th>Курс</th><th>пн</th><th>вт</th><th>ср</th><th>чт</th><th>пт</th></tr></thead><tbody id="schedBody"></tbody></table>
   <button class="btn" id="schedGuess">Підказати з наявних відміток</button>
@@ -176,6 +209,7 @@
     <button class="tab" data-tab="overview" id="tabOverview">Огляд</button>
     <button class="tab" data-tab="signals">Сигнали</button>
     <button class="tab" data-tab="student">Учень</button>
+    <button class="tab" data-tab="tutor">Тьютор</button>
   </div>
 
   <section id="tab-marks">
@@ -223,6 +257,19 @@
     </div>
     <div id="stuBody"></div>
   </section>
+
+  <section id="tab-tutor" class="hidden">
+    <div id="tutLoad"></div>
+    <div id="tutTools" class="row hidden">
+      <select id="tutPeriod">
+        <option value="all">Весь період</option>
+        <option value="30">30 днів до вибраної дати</option>
+        <option value="14">14 днів до вибраної дати</option>
+      </select>
+      <button class="icon-btn" id="tutReload" title="Перечитати всі аркуші">⟳</button>
+    </div>
+    <div id="tutBody"></div>
+  </section>
 </div>
 
 <div id="toast" class="toast hidden"><span id="toastText"></span><button id="undoBtn">Скасувати</button></div>
@@ -241,7 +288,8 @@ const WD = ['нд','пн','вт','ср','чт','пт','сб'];
 const S = {
   sheetName: null, dates: [], rows: [], courses: [],
   di: 0, course: '', tab: 'marks', undo: null, lateOpen: null,
-  sched: {}, student: ''
+  sched: {}, student: '', serials: [], serialIdx: new Map(), tError: '',
+  T: null, tLoading: false, tutorName: '', tstu: '', tWin: 0
 };
 const $ = id => document.getElementById(id);
 const store = {
@@ -302,6 +350,8 @@ async function loadData(){
     const v = head[FIRST_COL+i];
     S.dates.push(typeof v === 'number' ? serialToDate(v) : null);
   }
+  S.serials = head.slice(FIRST_COL, FIRST_COL+N_DATES).map(v => typeof v === 'number' ? v : null);
+  S.serialIdx = new Map(); S.serials.forEach((v,i) => { if (v !== null) S.serialIdx.set(v, i); });
   S.rows = [];
   for (let r=1; r<data.length; r++){
     const course = String(data[r][0] ?? '').trim();
@@ -363,14 +413,15 @@ async function undo(){
 
 /* ---------- обчислення ---------- */
 const courseRows = () => S.rows.filter(r => r.course === S.course);
-function tally(r, from, to){                      // from/to — мс (UTC) або null
+const tally = (r, from, to) => tallyMarks(r.marks, from, to);
+function tallyMarks(marks, from, to){              // from/to — мс (UTC) або null
   const t = {P:0,Z:0,V:0,PZ:0,X:0, lateDates:[], vDates:[], pzDates:[]};
   S.dates.forEach((d,i) => {
     if (!d) return;
     const ms = d.getTime();
     if (from !== null && ms < from) return;
     if (to !== null && ms > to) return;
-    const m = r.marks[i];
+    const m = marks[i];
     if (m === 'П') t.P++;
     else if (isLate(m)) { t.Z++; t.lateDates.push([d,m]); }
     else if (m === 'В') { t.V++; t.vDates.push(d); }
@@ -399,12 +450,7 @@ function pendingFor(course){
 }
 function signalsFor(r, start, end){
   const t = tally(r, start, end);
-  const msgs = []; let w = 0;
-  if (t.Z >= 3){ msgs.push(`${t.Z} запізнення — тьюторський check-in`); w += 2; }
-  else if (t.Z >= 2){ msgs.push(`${t.Z} запізнення — помітити патерн`); w += 1; }
-  if (t.V >= 2){ msgs.push(`${t.V} відсутності — перевірити причину та ризик втрати навчання`); w += 2; }
-  if (t.PZ >= 1){ msgs.push(`${t.PZ} × ПЗ — тьюторський сигнал одразу`); w += 3; }
-  return {msgs, w};
+  return sigMsgs(t.Z, t.V, t.PZ);
 }
 
 /* ---------- відображення ---------- */
@@ -438,11 +484,12 @@ function render(){
   const pc = S.courses.reduce((a,c) => a + pendingFor(c.name).length, 0);
   $('tabOverview').innerHTML = 'Огляд' + (pc ? `<span class="cnt">${pc}</span>` : '');
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === S.tab));
-  ['marks','overview','signals','student'].forEach(t => $('tab-'+t).classList.toggle('hidden', t !== S.tab));
+  ['marks','overview','signals','student','tutor'].forEach(t => $('tab-'+t).classList.toggle('hidden', t !== S.tab));
   if (S.tab === 'marks') renderMarks();
   if (S.tab === 'overview') renderOverview();
   if (S.tab === 'signals') renderSignals();
   if (S.tab === 'student') renderStudent();
+  if (S.tab === 'tutor') renderTutor();
   if (!$('settings').classList.contains('hidden')) renderSettings();
 }
 
@@ -692,6 +739,324 @@ function toastPlain(text){
   toastTimer = setTimeout(() => { $('toast').classList.add('hidden'); $('undoBtn').classList.remove('hidden'); }, 2500);
 }
 
+/* ---------- тьютор: збір з усіх аркушів (лише читання) ---------- */
+const nrm = s => String(s ?? '').trim().replace(/\s+/g,' ').toLowerCase();
+const nameKey = s => nrm(s).split(' ').sort().join(' ');
+const isTeacherSheet = n => /^Вч\s*·/.test(n);
+
+async function readAllSheets(progress){
+  const names = await listSheets();
+  const want = names.filter(n => isTeacherSheet(n) || n === 'Практикуми' || n === 'Сьогодні у школі' || n === 'Учні 2.0');
+  const raw = {};
+  for (let i = 0; i < want.length; i += 4){
+    const chunk = want.slice(i, i+4);
+    const res = await Excel.run(async ctx => {
+      const rs = chunk.map(n => {
+        const r = ctx.workbook.worksheets.getItem(n).getRangeByIndexes(0, 0, LAST_ROW, FIRST_COL + N_DATES);
+        r.load('values'); return r;
+      });
+      await ctx.sync(); return rs.map(r => r.values);
+    });
+    chunk.forEach((n,k) => raw[n] = res[k]);
+    progress(Math.min(i+4, want.length), want.length);
+  }
+  return raw;
+}
+function alignRow(head, row){                     // вирівнюємо дати інших аркушів за серійним номером
+  const out = new Array(N_DATES).fill('');
+  for (let k = 0; k < N_DATES; k++){
+    const idx = S.serialIdx.get(head[FIRST_COL+k]);
+    if (idx === undefined) continue;
+    const v = row[FIRST_COL+k]; out[idx] = (v === '' || v == null) ? '' : String(v);
+  }
+  return out;
+}
+function parseAll(raw){
+  const acts = [], presence = new Map(), tutorOf = [];
+  for (const [name, v] of Object.entries(raw)){
+    const head = v[DATE_ROW-1] || [];
+    if (isTeacherSheet(name) || name === 'Практикуми'){
+      const prac = name === 'Практикуми';
+      const teacher = prac ? 'Практикуми' : String(v[0][0] || '').trim();
+      for (let r = DATE_ROW; r < v.length; r++){
+        const course = String(v[r][0] ?? '').trim(), stu = String(v[r][1] ?? '').trim();
+        if (!course || !stu) continue;
+        acts.push({teacher, course: prac ? 'Практикуми' : course, student: stu, key: nameKey(stu), marks: alignRow(head, v[r]), practicum: prac});
+      }
+    } else if (name === 'Сьогодні у школі'){
+      for (let r = DATE_ROW; r < v.length; r++){
+        const stu = String(v[r][0] ?? '').trim(); if (!stu) continue;
+        presence.set(nameKey(stu), alignRow(head, v[r]).map(x => x.toUpperCase()));
+      }
+    } else if (name === 'Учні 2.0'){
+      for (let r = 1; r < v.length; r++){
+        const stu = String(v[r][0] ?? '').trim(), tut = String(v[r][1] ?? '').trim();
+        if (stu) tutorOf.push({name: stu, key: nameKey(stu), tutor: tut});
+      }
+    }
+  }
+  const own = raw[S.sheetName] ? String(raw[S.sheetName][0][0] || '').trim() : '';
+  return {acts, presence, tutorOf, ownName: own, nSheets: Object.keys(raw).length};
+}
+async function loadTutor(){
+  if (S.tLoading) return;
+  S.tLoading = true; S.tError = ''; renderTutor();
+  try{
+    const raw = await readAllSheets((a,b) => {
+      const pr = $('tutProg'), tx = $('tutProgText');
+      if (pr) pr.style.width = (a/b*100) + '%';
+      if (tx) tx.textContent = `Читаю аркуші: ${a} з ${b}`;
+    });
+    S.T = parseAll(raw);
+    if (!S.tutorName && S.T.ownName){ S.tutorName = S.T.ownName; store.set('att.tutor', S.tutorName); $('tutorName').value = S.tutorName; }
+  }catch(e){ S.tError = 'Не вдалося прочитати аркуші: ' + (e.message || e); }
+  S.tLoading = false; render();
+}
+function myTutees(){
+  if (!S.T) return [];
+  const k = nameKey(S.tutorName);
+  const seen = new Set(), out = [];
+  S.T.tutorOf.forEach(x => { if (nameKey(x.tutor) === k && !seen.has(x.key)){ seen.add(x.key); out.push(x); } });
+  return out;
+}
+function periodFromSel(v){
+  const end = S.dates[S.di].getTime();
+  if (v === 'all') return {from:null, to:null, label:'весь період'};
+  const d = +v;
+  return {from: end - (d-1)*86400000, to: end, label: `${d} днів до ${fmtDate(S.dates[S.di])}`};
+}
+function sigMsgs(z, v, pz){
+  const msgs = [], tags = []; let w = 0;
+  if (z >= 3){ msgs.push(`${z} запізнення — тьюторський check-in`); tags.push('З≥3'); w += 2; }
+  else if (z >= 2){ msgs.push(`${z} запізнення — помітити патерн`); tags.push('З≥2'); w += 1; }
+  if (v >= 2){ msgs.push(`${v} відсутності — перевірити причину та ризик втрати навчання`); tags.push('В≥2'); w += 2; }
+  if (pz >= 1){ msgs.push(`${pz} × ПЗ — тьюторський сигнал одразу`); tags.push('ПЗ'); w += 3; }
+  return {msgs, tags, w};
+}
+function tutData(t, per){
+  const acts = S.T.acts.filter(a => a.key === t.key);
+  const rows = acts.map(a => ({a, t: tallyMarks(a.marks, per.from, per.to)}));
+  const sum = {P:0,Z:0,V:0,PZ:0,X:0};
+  rows.forEach(({t}) => ['P','Z','V','PZ','X'].forEach(k => sum[k] += t[k]));
+  const total = sum.P+sum.Z+sum.V+sum.PZ;
+  const rate = total ? Math.round((sum.P+sum.Z)/total*100) : null;
+  // сигнали: 14 днів до вибраної дати, по всіх заняттях
+  const end = S.dates[S.di].getTime(), st = end - 13*86400000;
+  const w = {Z:0,V:0,PZ:0};
+  acts.forEach(a => { const x = tallyMarks(a.marks, st, end); w.Z += x.Z; w.V += x.V; w.PZ += x.PZ; });
+  const sig = sigMsgs(w.Z, w.V, w.PZ);
+  // присутність у школі + розбіжності
+  const pr = S.T.presence.get(t.key) || null;
+  const pc = {'Є':0,'Н':0,'О':0}, anomalies = [];
+  if (pr) S.dates.forEach((d,i) => {
+    if (!d) return;
+    const ms = d.getTime();
+    if ((per.from !== null && ms < per.from) || (per.to !== null && ms > per.to)) return;
+    const p = pr[i]; if (pc[p] !== undefined) pc[p]++;
+    acts.forEach(a => {
+      const m = a.marks[i];
+      if (p === 'Н' && (m === 'П' || isLate(m) || m === 'ПЗ')) anomalies.push({di:i, a, kind:'N', m});
+      if (p === 'Є' && m === 'В') anomalies.push({di:i, a, kind:'E', m});
+    });
+  });
+  return {t, acts, rows, sum, total, rate, sig, pr, pc, anomalies};
+}
+const actLabel = a => a.practicum ? 'Практикуми' : a.course;
+const pctTxt = r => r === null ? '—' : r + '%';
+
+function renderTutor(){
+  const load = $('tutLoad'), tools = $('tutTools'), body = $('tutBody');
+  load.innerHTML = ''; body.innerHTML = '';
+  if (S.tLoading){
+    tools.classList.add('hidden');
+    load.innerHTML = '<div class="note" id="tutProgText">Читаю аркуші…</div><div class="prog"><i id="tutProg"></i></div>';
+    return;
+  }
+  if (S.tError){
+    tools.classList.add('hidden');
+    body.innerHTML = '<div class="err"></div>'; body.firstChild.textContent = S.tError;
+    const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Спробувати ще раз'; b.onclick = loadTutor; body.appendChild(b);
+    return;
+  }
+  if (!S.T){
+    tools.classList.add('hidden');
+    body.innerHTML = '<div class="note">Панель прочитає вчительські аркуші, «Практикуми», «Сьогодні у школі» та «Учні 2.0», щоб зібрати повну картину по ваших учнях. Нічого не змінюється: лише читання.</div>';
+    const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Завантажити дані'; b.onclick = loadTutor; body.appendChild(b);
+    return;
+  }
+  tools.classList.remove('hidden');
+  const per = periodFromSel($('tutPeriod').value);
+  const tutees = myTutees();
+  if (!S.tutorName){
+    body.innerHTML = '<div class="note">Вкажіть своє ім\'я так, як воно записане в «Учні 2.0» (стовпець «Тьютор»), у ⚙.</div>'; return;
+  }
+  if (!tutees.length){
+    body.innerHTML = '<div class="note"></div>'; body.firstChild.textContent = `У «Учні 2.0» не знайдено учнів із тьютором «${S.tutorName}». Перевірте ім'я в ⚙.`; return;
+  }
+  const sel = S.tstu && tutees.find(x => x.key === S.tstu);
+  if (sel) renderTutee(body, sel, per); else renderTutList(body, tutees, per);
+}
+
+function renderTutList(body, tutees, per){
+  const data = tutees.map(t => tutData(t, per));
+  data.sort((a,b) => b.sig.w - a.sig.w || a.t.name.localeCompare(b.t.name,'uk'));
+  const head = document.createElement('div'); head.className = 'note'; head.style.paddingTop = '2px';
+  head.textContent = `Мої учні: ${data.length}. Період: ${per.label}. Сигнали рахуються за 14 днів до ${fmtDate(S.dates[S.di])}.`;
+  body.appendChild(head);
+  data.forEach(d => {
+    const c = document.createElement('div'); c.className = 'tcard';
+    c.innerHTML = '<div class="h"><b></b><span class="pct"></span></div><div class="cn"></div>';
+    c.querySelector('b').textContent = d.t.name;
+    c.querySelector('.pct').textContent = pctTxt(d.rate);
+    const cn = c.querySelector('.cn');
+    const pill = (cls, txt) => { const s = document.createElement('span'); s.className = 'pill ' + cls; s.textContent = txt; cn.appendChild(s); };
+    if (!d.acts.length) pill('N', 'немає даних');
+    else {
+      pill('P', 'П ' + d.sum.P); pill('Z', 'З ' + d.sum.Z); pill('V', 'В ' + d.sum.V); pill('PZ', 'ПЗ ' + d.sum.PZ);
+      if (d.pr) pill('N', `у школі: Н ${d.pc['Н']}`);
+      d.sig.tags.forEach(t => pill('sig', t));
+      if (d.anomalies.length) pill('sig', `перевірити: ${d.anomalies.length}`);
+    }
+    c.onclick = () => { S.tstu = d.t.key; render(); };
+    body.appendChild(c);
+  });
+  const cp = document.createElement('button'); cp.className = 'btn'; cp.textContent = 'Копіювати зведення по всіх';
+  cp.onclick = () => copyText(data.map(d => tutSummaryLine(d)).join('\n'));
+  body.appendChild(cp);
+}
+function tutSummaryLine(d){
+  const s = `${d.t.name}: ${pctTxt(d.rate)} (П ${d.sum.P}, З ${d.sum.Z}, В ${d.sum.V}, ПЗ ${d.sum.PZ})`;
+  return s + (d.pr ? `; у школі Н ${d.pc['Н']}` : '') + (d.sig.tags.length ? `; сигнали: ${d.sig.tags.join(', ')}` : '') + (d.anomalies.length ? `; перевірити: ${d.anomalies.length}` : '');
+}
+async function copyText(text){
+  try{ await navigator.clipboard.writeText(text); }
+  catch(e){
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); }catch(_){} ta.remove();
+  }
+  toastPlain('Скопійовано');
+}
+function lastDays(n){                               // n останніх навчальних днів до вибраної дати
+  const idx = []; for (let i = S.di; i >= 0 && idx.length < n; i--) if (S.dates[i]) idx.unshift(i); return idx;
+}
+function markCell(m){
+  const td = document.createElement('td');
+  if (!m){ return td; }
+  const b = bucket(m);
+  if (b){ td.className = b; td.textContent = b === 'Z' ? m.slice(1) : m; }
+  else if (isCode(m)){ td.className = CODE_CLASS[m]; td.textContent = m; }
+  else td.textContent = m;
+  td.title = m; return td;
+}
+function renderTutee(body, t, per){
+  const d = tutData(t, per);
+  const back = document.createElement('button'); back.className = 'back'; back.textContent = '‹ Усі мої учні';
+  back.onclick = () => { S.tstu = ''; render(); }; body.appendChild(back);
+  const h = document.createElement('div'); h.innerHTML = '<b style="font-size:15px"></b>'; h.firstChild.textContent = t.name; body.appendChild(h);
+  const sub = document.createElement('div'); sub.className = 'note'; sub.style.padding = '0 0 2px';
+  sub.textContent = `Період: ${per.label}. Занять і активностей: ${d.acts.length}.`; body.appendChild(sub);
+  if (!d.acts.length){ body.appendChild(Object.assign(document.createElement('div'), {className:'note', textContent:'На вчительських аркушах цього учня не знайдено.'})); return; }
+
+  const cards = document.createElement('div'); cards.className = 'cards';
+  cards.innerHTML = `<div class="card"><b>${pctTxt(d.rate)}</b>відвід.</div><div class="card P"><b>${d.sum.P}</b>П</div>
+    <div class="card Z"><b>${d.sum.Z}</b>З</div><div class="card V"><b>${d.sum.V}</b>В</div><div class="card PZ"><b>${d.sum.PZ}</b>ПЗ</div>`;
+  body.appendChild(cards);
+  if (d.sum.X){ body.appendChild(Object.assign(document.createElement('div'), {className:'note', style:'padding:0 0 4px', textContent:`Не враховано (Т/ХВ/БЗ/С): ${d.sum.X}.`})); }
+
+  if (d.pr){
+    const g = document.createElement('div'); g.className = 'cn'; g.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin:2px 0 6px';
+    g.innerHTML = '<span class="note" style="padding:0">У школі:</span>';
+    [['Є','P','був'],['Н','N','не було'],['О','Z','очікували пізніше']].forEach(([k,cls,txt]) => {
+      const s = document.createElement('span'); s.className = 'pill ' + cls; s.textContent = `${txt} ${d.pc[k]}`; g.appendChild(s);
+    });
+    body.appendChild(g);
+  }
+  if (d.sig.msgs.length){
+    const box = document.createElement('div'); box.className = 'pend';
+    box.innerHTML = `<b>Сигнали (14 днів до ${fmtDate(S.dates[S.di])}, усі заняття разом)</b>`;
+    const ul = document.createElement('ul'); ul.style.cssText = 'margin:4px 0 0;padding-left:17px;font-size:12.5px';
+    d.sig.msgs.forEach(m => { const li = document.createElement('li'); li.textContent = m; ul.appendChild(li); });
+    box.appendChild(ul); body.appendChild(box);
+  }
+
+  // смуга останніх днів
+  const days = lastDays(10);
+  const h2 = document.createElement('h3'); h2.textContent = `Останні дні: ${fmtDate(S.dates[days[0]])} – ${fmtDate(S.dates[days[days.length-1]])}`; body.appendChild(h2);
+  const tbl = document.createElement('table'); tbl.className = 'heat';
+  let thead = '<thead><tr><th class="lbl"></th>';
+  days.forEach(i => { const dt = S.dates[i]; thead += `<th>${dt.getUTCDate()}<small>${WD[dt.getUTCDay()]}</small></th>`; });
+  tbl.innerHTML = thead + '</tr></thead>';
+  const tb = document.createElement('tbody');
+  if (d.pr){
+    const tr = document.createElement('tr'); tr.className = 'pres';
+    const l = document.createElement('td'); l.className = 'lbl'; l.textContent = 'У школі'; tr.appendChild(l);
+    days.forEach(i => {
+      const td = document.createElement('td'); const p = d.pr[i];
+      td.className = p === 'Є' ? 'here' : p === 'Н' ? 'away' : p === 'О' ? 'later' : ''; td.textContent = p || ''; tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  }
+  const inWin = d.acts.filter(a => days.some(i => a.marks[i] !== ''));
+  inWin.forEach(a => {
+    const tr = document.createElement('tr');
+    const l = document.createElement('td'); l.className = 'lbl'; l.textContent = actLabel(a); l.title = `${actLabel(a)} — ${a.teacher}`; tr.appendChild(l);
+    days.forEach(i => tr.appendChild(markCell(a.marks[i])));
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb); body.appendChild(tbl);
+  if (d.acts.length > inWin.length) body.appendChild(Object.assign(document.createElement('div'), {className:'note', style:'padding:0', textContent:`Ще ${d.acts.length - inWin.length} занять без відміток за ці дні не показано.`}));
+
+  // розбіжності
+  if (d.anomalies.length){
+    const h3 = document.createElement('h3'); h3.textContent = `Варто перевірити (${d.anomalies.length})`; body.appendChild(h3);
+    d.anomalies.slice(0, 12).forEach(x => {
+      const e = document.createElement('div'); e.className = 'chk';
+      e.textContent = x.kind === 'N'
+        ? `${fmtDate(S.dates[x.di])} · ${actLabel(x.a)}: «${x.m}», але в школі відмічено Н`
+        : `${fmtDate(S.dates[x.di])} · ${actLabel(x.a)}: «В», хоча в школі був(ла) — за правилами це ПЗ?`;
+      body.appendChild(e);
+    });
+    if (d.anomalies.length > 12) body.appendChild(Object.assign(document.createElement('div'), {className:'note', textContent:`…і ще ${d.anomalies.length-12} у повному звіті.`}));
+  }
+
+  // за активностями
+  const h4 = document.createElement('h3'); h4.textContent = 'За заняттями'; body.appendChild(h4);
+  const mt = document.createElement('table'); mt.className = 'mini';
+  mt.innerHTML = '<thead><tr><th>Заняття</th><th>П</th><th>З</th><th>В</th><th>ПЗ</th><th>%</th></tr></thead>';
+  const mb = document.createElement('tbody');
+  const active = d.rows.filter(({t}) => t.total + t.X > 0);
+  active.forEach(({a, t}) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><span></span><div class="sub" style="color:var(--mute);font-size:11px"></div></td><td>${t.P}</td><td>${t.Z}</td><td>${t.V}</td><td>${t.PZ}</td><td>${t.rate === null ? '—' : t.rate}</td>`;
+    tr.querySelector('span').textContent = actLabel(a); tr.querySelector('.sub').textContent = a.practicum ? '' : a.teacher;
+    mb.appendChild(tr);
+  });
+  mt.appendChild(mb); body.appendChild(mt);
+  if (d.rows.length > active.length) body.appendChild(Object.assign(document.createElement('div'), {className:'note', style:'padding:0', textContent:`Без жодної відмітки за період: ${d.rows.length - active.length} (не показано).`}));
+
+  const cp = document.createElement('button'); cp.className = 'btn'; cp.textContent = 'Копіювати повний звіт';
+  cp.onclick = () => copyText(tutReportText(d, per)); body.appendChild(cp);
+}
+function tutReportText(d, per){
+  const L = [];
+  L.push(`${d.t.name} — відвідування (${per.label})`);
+  L.push(`Загалом: ${pctTxt(d.rate)} · П ${d.sum.P}, З ${d.sum.Z}, В ${d.sum.V}, ПЗ ${d.sum.PZ}` + (d.sum.X ? `, не враховано ${d.sum.X}` : ''));
+  if (d.pr) L.push(`У школі: був ${d.pc['Є']}, не було ${d.pc['Н']}, очікували пізніше ${d.pc['О']}`);
+  if (d.sig.msgs.length) L.push(`Сигнали (14 днів до ${fmtDate(S.dates[S.di])}): ` + d.sig.msgs.join('; '));
+  L.push('За заняттями:');
+  d.rows.filter(({t}) => t.total + t.X > 0).forEach(({a, t}) => {
+    L.push(`• ${actLabel(a)}${a.practicum ? '' : ' (' + a.teacher + ')'}: ${pctTxt(t.rate)} (П ${t.P}, З ${t.Z}, В ${t.V}, ПЗ ${t.PZ})`);
+    if (t.vDates.length) L.push(`   В: ${t.vDates.map(fmtDate).join(', ')}`);
+    if (t.pzDates.length) L.push(`   ПЗ: ${t.pzDates.map(fmtDate).join(', ')}`);
+    if (t.lateDates.length) L.push(`   З: ${t.lateDates.map(([dt,m]) => `${fmtDate(dt)} (${m.slice(1)} хв)`).join(', ')}`);
+  });
+  if (d.anomalies.length){
+    L.push('Варто перевірити:');
+    d.anomalies.forEach(x => L.push(`• ${fmtDate(S.dates[x.di])} · ${actLabel(x.a)}: ` + (x.kind === 'N' ? `«${x.m}», але в школі Н` : '«В», хоча в школі був(ла) — можливо, ПЗ')));
+  }
+  return L.join('\n');
+}
+
 /* ---------- налаштування: розклад ---------- */
 function renderSettings(){
   const body = $('schedBody'); body.innerHTML = '';
@@ -752,7 +1117,10 @@ function wire(){
   $('dateSel').onchange = e => { S.di = +e.target.value; S.lateOpen = null; render(); };
   $('courseSel').onchange = e => { S.course = e.target.value; S.lateOpen = null; store.set('att.course', S.course); render(); };
   $('onlyLessons').onchange = render;
-  document.querySelectorAll('.tab').forEach(t => t.onclick = () => { S.tab = t.dataset.tab; render(); });
+  document.querySelectorAll('.tab').forEach(t => t.onclick = () => { S.tab = t.dataset.tab; if (S.tab === 'tutor' && !S.T && !S.tLoading && !S.tError) loadTutor(); else render(); });
+  $('tutPeriod').onchange = renderTutor;
+  $('tutReload').onclick = () => { S.T = null; S.tError = ''; loadTutor(); };
+  $('tutorName').onchange = e => { S.tutorName = e.target.value.trim(); store.set('att.tutor', S.tutorName); S.tstu = ''; render(); };
   $('sigAll').onchange = renderSignals;
   $('stuSel').onchange = e => { S.student = e.target.value; renderStudent(); };
   $('stuPeriod').onchange = renderStudent;
@@ -787,6 +1155,7 @@ function wire(){
 
 async function init(){
   wire(); loadSched();
+  S.tutorName = store.get('att.tutor') || ''; $('tutorName').value = S.tutorName;
   try{
     const names = await listSheets();
     const sel = $('sheetSel');
