@@ -161,6 +161,17 @@
   .prog i{display:block;height:100%;background:var(--accent);width:0}
   input.txt{font:inherit;border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%}
 
+  .pickbtn{display:block;width:100%;text-align:left;border:1px solid var(--grid);background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:6px}
+  .pickbtn:hover{background:var(--soft)}
+  .pickbtn small{display:block;color:var(--mute);font-size:11.5px}
+  .addbar{margin:0 0 8px}
+  .addbox{border:1px solid var(--grid);border-radius:8px;padding:8px;margin:6px 0 10px;background:var(--soft)}
+  .addbox .res{margin-top:6px}
+  .addbox .res button{display:block;width:100%;text-align:left;border:0;background:#fff;border-bottom:1px solid var(--line);padding:6px 8px}
+  .addbox .res button:hover{background:#eef6f0}
+  .xbtn{border:0;background:none;color:var(--mute);font-size:16px;line-height:1;padding:0 2px}
+  .xbtn:hover{color:var(--v-ink)}
+
   /* налаштування */
   .settings{background:var(--soft);border-radius:8px;padding:10px;margin-bottom:8px}
   .settings label.l{font-size:12px;color:var(--mute);display:block;margin-bottom:4px}
@@ -184,6 +195,7 @@
   <label class="l" for="sheetSel">Мій аркуш</label>
   <select id="sheetSel"></select>
   <h4>Тьюторство</h4>
+  <label class="tog"><input type="checkbox" id="allSearch"> шукати учнів по всій школі (інакше — лише учні моїх курсів)</label>
   <label class="l" for="tutorName">Моє ім'я в «Учні 2.0» (як у стовпці «Тьютор»)</label>
   <input class="txt" id="tutorName" placeholder="Прізвище Ім'я">
   <h4>Розклад курсів (дні тижня)</h4>
@@ -193,6 +205,7 @@
   <div class="note">Розклад зберігається лише в цьому браузері й не змінює таблицю.</div>
 </div>
 <div id="err" class="err hidden"></div>
+<div id="picker" class="hidden"></div>
 
 <div id="app" class="hidden">
   <div class="row">
@@ -276,7 +289,6 @@
 
 <script>
 'use strict';
-const DEFAULT_SHEET = 'Вч · Євгеній';
 const FIRST_ROW = 5, LAST_ROW = 204;
 const DATE_ROW = 4, FIRST_COL = 2;
 const N_DATES = 55;                                   // C..BE
@@ -288,7 +300,7 @@ const WD = ['нд','пн','вт','ср','чт','пт','сб'];
 const S = {
   sheetName: null, dates: [], rows: [], courses: [],
   di: 0, course: '', tab: 'marks', undo: null, lateOpen: null,
-  sched: {}, student: '', serials: [], serialIdx: new Map(), tError: '',
+  sched: {}, student: '', serials: [], serialIdx: new Map(), tError: '', watch: [], allSearch: false, addOpen: false, addQ: '',
   T: null, tLoading: false, tutorName: '', tstu: '', tWin: 0
 };
 const $ = id => document.getElementById(id);
@@ -814,10 +826,33 @@ async function loadTutor(){
 }
 function myTutees(){
   if (!S.T) return [];
-  const k = nameKey(S.tutorName);
   const seen = new Set(), out = [];
-  S.T.tutorOf.forEach(x => { if (nameKey(x.tutor) === k && !seen.has(x.key)){ seen.add(x.key); out.push(x); } });
+  if (S.tutorName){
+    const k = nameKey(S.tutorName);
+    S.T.tutorOf.forEach(x => { if (nameKey(x.tutor) === k && !seen.has(x.key)){ seen.add(x.key); out.push({...x, manual:false}); } });
+  }
+  S.watch.forEach(w => { if (!seen.has(w.key)){ seen.add(w.key); out.push({name:w.name, key:w.key, manual:true}); } });
   return out;
+}
+function loadWatch(){ try{ S.watch = JSON.parse(store.get('att.watch') || '[]') || []; }catch(e){ S.watch = []; } }
+function saveWatch(){ store.set('att.watch', JSON.stringify(S.watch)); }
+function addWatch(name){
+  const key = nameKey(name);
+  if (!S.watch.some(w => w.key === key)){ S.watch.push({key, name}); saveWatch(); }
+}
+function removeWatch(key){ S.watch = S.watch.filter(w => w.key !== key); saveWatch(); if (S.tstu === key) S.tstu = ''; }
+function watchCandidates(q){
+  const have = new Set(myTutees().map(x => x.key));
+  const names = new Map();
+  if (S.allSearch){
+    S.T.tutorOf.forEach(x => names.set(x.key, x.name));
+    S.T.acts.forEach(a => names.set(a.key, a.student));
+  } else {
+    S.rows.forEach(r => names.set(nameKey(r.student), r.student));
+  }
+  const nq = nrm(q);
+  return [...names.entries()].filter(([k,n]) => !have.has(k) && (!nq || nrm(n).includes(nq)))
+    .map(([,n]) => n).sort((a,b) => a.localeCompare(b,'uk')).slice(0, 8);
 }
 function periodFromSel(v){
   const end = S.dates[S.di].getTime();
@@ -887,17 +922,45 @@ function renderTutor(){
   tools.classList.remove('hidden');
   const per = periodFromSel($('tutPeriod').value);
   const tutees = myTutees();
-  if (!S.tutorName){
-    body.innerHTML = '<div class="note">Вкажіть своє ім\'я так, як воно записане в «Учні 2.0» (стовпець «Тьютор»), у ⚙.</div>'; return;
-  }
-  if (!tutees.length){
-    body.innerHTML = '<div class="note"></div>'; body.firstChild.textContent = `У «Учні 2.0» не знайдено учнів із тьютором «${S.tutorName}». Перевірте ім'я в ⚙.`; return;
-  }
   const sel = S.tstu && tutees.find(x => x.key === S.tstu);
   if (sel) renderTutee(body, sel, per); else renderTutList(body, tutees, per);
 }
 
+function renderAddBar(body){
+  const bar = document.createElement('div'); bar.className = 'addbar';
+  const btn = document.createElement('button'); btn.className = 'btn'; btn.style.marginTop = '0';
+  btn.textContent = S.addOpen ? 'Закрити пошук' : '+ Додати учня';
+  btn.onclick = () => { S.addOpen = !S.addOpen; S.addQ = ''; renderTutor(); };
+  bar.appendChild(btn); body.appendChild(bar);
+  if (!S.addOpen) return;
+  const box = document.createElement('div'); box.className = 'addbox';
+  const inp = document.createElement('input'); inp.className = 'txt'; inp.placeholder = 'Прізвище або ім\'я'; inp.value = S.addQ;
+  const res = document.createElement('div'); res.className = 'res';
+  const fill = () => {
+    res.innerHTML = '';
+    const c = watchCandidates(S.addQ);
+    if (!c.length){ res.innerHTML = '<div class="note" style="padding:4px 0 0">Нікого не знайдено.</div>'; return; }
+    c.forEach(n => {
+      const b = document.createElement('button'); b.textContent = n;
+      b.onclick = () => { addWatch(n); S.addQ = ''; renderTutor(); };
+      res.appendChild(b);
+    });
+  };
+  inp.oninput = () => { S.addQ = inp.value; fill(); };
+  const hint = document.createElement('div'); hint.className = 'note'; hint.style.padding = '4px 0 0';
+  hint.textContent = S.allSearch ? 'Пошук по всіх учнях школи (змінюється в ⚙).' : 'Пошук серед учнів ваших курсів (у ⚙ можна розширити на всю школу).';
+  box.append(inp, hint, res); body.appendChild(box); fill(); setTimeout(() => inp.focus(), 0);
+}
+
 function renderTutList(body, tutees, per){
+  renderAddBar(body);
+  if (!tutees.length){
+    const n = document.createElement('div'); n.className = 'note';
+    n.textContent = S.tutorName
+      ? `У «Учні 2.0» не знайдено учнів із тьютором «${S.tutorName}». Перевірте ім'я в ⚙ або додайте учнів вручну.`
+      : 'Вкажіть своє ім\'я так, як воно записане в «Учні 2.0» (стовпець «Тьютор») у ⚙, або додайте учнів вручну.';
+    body.appendChild(n); return;
+  }
   const data = tutees.map(t => tutData(t, per));
   data.sort((a,b) => b.sig.w - a.sig.w || a.t.name.localeCompare(b.t.name,'uk'));
   const head = document.createElement('div'); head.className = 'note'; head.style.paddingTop = '2px';
@@ -905,11 +968,17 @@ function renderTutList(body, tutees, per){
   body.appendChild(head);
   data.forEach(d => {
     const c = document.createElement('div'); c.className = 'tcard';
-    c.innerHTML = '<div class="h"><b></b><span class="pct"></span></div><div class="cn"></div>';
+    c.innerHTML = '<div class="h"><b></b><span><span class="pct"></span></span></div><div class="cn"></div>';
     c.querySelector('b').textContent = d.t.name;
     c.querySelector('.pct').textContent = pctTxt(d.rate);
+    if (d.t.manual){
+      const x = document.createElement('button'); x.className = 'xbtn'; x.textContent = '×'; x.title = 'Прибрати зі списку';
+      x.onclick = ev => { ev.stopPropagation(); removeWatch(d.t.key); render(); };
+      c.querySelector('.h span').append(' ', x);
+    }
     const cn = c.querySelector('.cn');
     const pill = (cls, txt) => { const s = document.createElement('span'); s.className = 'pill ' + cls; s.textContent = txt; cn.appendChild(s); };
+    if (d.t.manual) pill('N', 'додано вручну');
     if (!d.acts.length) pill('N', 'немає даних');
     else {
       pill('P', 'П ' + d.sum.P); pill('Z', 'З ' + d.sum.Z); pill('V', 'В ' + d.sum.V); pill('PZ', 'ПЗ ' + d.sum.PZ);
@@ -952,6 +1021,10 @@ function renderTutee(body, t, per){
   const d = tutData(t, per);
   const back = document.createElement('button'); back.className = 'back'; back.textContent = '‹ Усі мої учні';
   back.onclick = () => { S.tstu = ''; render(); }; body.appendChild(back);
+  if (t.manual){
+    const rm = document.createElement('button'); rm.className = 'xbtn'; rm.style.cssText = 'float:right;font-size:12px'; rm.textContent = 'Прибрати зі списку';
+    rm.onclick = () => { removeWatch(t.key); render(); }; body.appendChild(rm);
+  }
   const h = document.createElement('div'); h.innerHTML = '<b style="font-size:15px"></b>'; h.firstChild.textContent = t.name; body.appendChild(h);
   const sub = document.createElement('div'); sub.className = 'note'; sub.style.padding = '0 0 2px';
   sub.textContent = `Період: ${per.label}. Занять і активностей: ${d.acts.length}.`; body.appendChild(sub);
@@ -1120,6 +1193,7 @@ function wire(){
   document.querySelectorAll('.tab').forEach(t => t.onclick = () => { S.tab = t.dataset.tab; if (S.tab === 'tutor' && !S.T && !S.tLoading && !S.tError) loadTutor(); else render(); });
   $('tutPeriod').onchange = renderTutor;
   $('tutReload').onclick = () => { S.T = null; S.tError = ''; loadTutor(); };
+  $('allSearch').onchange = e => { S.allSearch = e.target.checked; store.set('att.allsearch', S.allSearch ? '1' : '0'); render(); };
   $('tutorName').onchange = e => { S.tutorName = e.target.value.trim(); store.set('att.tutor', S.tutorName); S.tstu = ''; render(); };
   $('sigAll').onchange = renderSignals;
   $('stuSel').onchange = e => { S.student = e.target.value; renderStudent(); };
@@ -1153,20 +1227,44 @@ function wire(){
   };
 }
 
+async function listTeacherSheets(){
+  return Excel.run(async ctx => {
+    const c = ctx.workbook.worksheets; c.load('items/name,items/visibility'); await ctx.sync();
+    const vis = c.items.filter(x => isTeacherSheet(x.name) && (x.visibility === undefined || x.visibility === 'Visible'));
+    const cells = vis.map(x => { const r = x.getRange('A1'); r.load('values'); return r; });
+    await ctx.sync();
+    return vis.map((x,i) => ({name: x.name, teacher: String(cells[i].values[0][0] || '').trim()}));
+  });
+}
+function showPicker(list){
+  $('app').classList.add('hidden');
+  const box = $('picker'); box.classList.remove('hidden'); box.innerHTML = '';
+  const h = document.createElement('div'); h.innerHTML = '<b style="font-size:14.5px">Оберіть свій аркуш</b><div class="note" style="padding:2px 0 8px">Це робиться один раз. Панель писатиме відмітки лише в обраний аркуш. Змінити вибір можна в ⚙.</div>';
+  box.appendChild(h);
+  list.slice().sort((a,b) => a.teacher.localeCompare(b.teacher,'uk')).forEach(x => {
+    const b = document.createElement('button'); b.className = 'pickbtn';
+    b.innerHTML = '<span></span><small></small>'; b.firstChild.textContent = x.teacher || x.name; b.lastChild.textContent = x.name;
+    b.onclick = async () => {
+      S.sheetName = x.name; store.set('att.sheet', x.name); $('sheetSel').value = x.name;
+      box.classList.add('hidden');
+      try{ await loadData(); pickToday(); render(); }catch(e){ showError(e.message || String(e)); }
+    };
+    box.appendChild(b);
+  });
+}
 async function init(){
-  wire(); loadSched();
+  wire(); loadSched(); loadWatch();
   S.tutorName = store.get('att.tutor') || ''; $('tutorName').value = S.tutorName;
+  S.allSearch = store.get('att.allsearch') === '1'; $('allSearch').checked = S.allSearch;
   try{
-    const names = await listSheets();
+    const list = await listTeacherSheets();
     const sel = $('sheetSel');
-    names.filter(n => n.startsWith('Вч')).forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); });
+    list.forEach(x => { const o = document.createElement('option'); o.value = x.name; o.textContent = `${x.name} — ${x.teacher}`; sel.appendChild(o); });
     const saved = store.get('att.sheet');
-    S.sheetName = names.includes(saved) ? saved : names.includes(DEFAULT_SHEET) ? DEFAULT_SHEET : null;
+    S.sheetName = list.some(x => x.name === saved) ? saved : null;
     if (!S.sheetName){
-      $('settings').classList.remove('hidden');
-      showError(`Не знайдено аркуш «${DEFAULT_SHEET}». Виберіть свій аркуш у налаштуваннях.`);
-      if (sel.options.length) { sel.selectedIndex = -1; }
-      return;
+      if (!list.length){ showError('Не знайдено жодного вчительського аркуша «Вч · …».'); return; }
+      showPicker(list); return;
     }
     sel.value = S.sheetName;
     S.course = store.get('att.course') || '';
