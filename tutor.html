@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Тьютор</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+  :root{--bg:#fff;--ink:#1f2328;--mute:#6b7280;--line:#e3e6ea;--grid:#c4cad3;--soft:#f5f6f8;--accent:#1f5fbf;
+    --p:#d4edda;--p-ink:#14532d;--v:#f8d4d4;--v-ink:#8a1c1c;--z:#fdf0b3;--z-ink:#7a5b00;--pz:#e6d9f5;--pz-ink:#4b2a7a;
+    --cT:#b9d2f3;--cT-ink:#1b3a6d;--cBZ:#dcf0fb;--cBZ-ink:#1c4a6e;--cHV:#d3e8e2;--cHV-ink:#1d4d45;--cS:#e5e7eb;--cS-ink:#374151}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:13.5px/1.35 "Segoe UI",system-ui,sans-serif}
+  body{padding:10px 10px 70px}
+  button{font:inherit;cursor:pointer;color:inherit}
+  .hidden{display:none!important}
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .top h1{font-size:15px;margin:0}
+  .ib{border:1px solid var(--line);background:#fff;border-radius:6px;padding:3px 9px;color:var(--mute)}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 10px;margin-top:6px}
+  .btn:hover{background:var(--soft)}
+  .btn.prim{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  select,input.txt{font:inherit;border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:#fff;width:100%;color:var(--ink)}
+  .note{color:var(--mute);font-size:12.5px;padding:6px 0}
+  .err{background:#fde8e8;color:#8a1c1c;border-radius:8px;padding:10px;margin:8px 0}
+  h2{font-size:15px;margin:0 0 4px} h3{font-size:13px;margin:14px 0 4px}
+  .tcard{border:1px solid var(--grid);border-radius:8px;padding:8px 10px;margin-bottom:7px;cursor:pointer;background:#fff}
+  .tcard:hover{background:#fafbfc}
+  .tcard .h{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+  .tcard .h b{font-size:13.5px}.tcard .pct{font-weight:700}
+  .tcard .cn{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;min-height:4px}
+  .pill{border-radius:5px;padding:0 6px;font-size:11.5px;font-weight:600}
+  .pill.P{background:var(--p);color:var(--p-ink)}.pill.Z{background:var(--z);color:var(--z-ink)}
+  .pill.V{background:var(--v);color:var(--v-ink)}.pill.PZ{background:var(--pz);color:var(--pz-ink)}
+  .pill.N{background:#eceef1;color:#4b5563}.pill.sig{background:#fff;border:1px solid #e0a43a;color:#8a5a00}
+  .pill.ok{background:var(--p);color:var(--p-ink)}
+  .back{border:0;background:none;color:var(--accent);padding:0;margin:0 0 6px;font-weight:600}
+  .xbtn{border:0;background:none;color:var(--mute);font-size:16px;line-height:1;padding:0 2px}
+  .xbtn:hover{color:var(--v-ink)}
+  .cards{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin:8px 0}
+  .card{border-radius:7px;text-align:center;padding:5px 0;font-size:11px;color:var(--mute);background:var(--soft)}
+  .card b{display:block;font-size:16px;color:var(--ink);line-height:1.15}
+  .card.P{background:var(--p);color:var(--p-ink)}.card.P b{color:var(--p-ink)}
+  .card.Z{background:var(--z);color:var(--z-ink)}.card.Z b{color:var(--z-ink)}
+  .card.V{background:var(--v);color:var(--v-ink)}.card.V b{color:var(--v-ink)}
+  .card.PZ{background:var(--pz);color:var(--pz-ink)}.card.PZ b{color:var(--pz-ink)}
+  .pend{border:1px solid #f1e0a0;background:#fffbeb;border-radius:8px;padding:7px 9px;margin:6px 0}
+  table.heat{border-collapse:collapse;table-layout:fixed;width:100%;margin:4px 0;border:1.5px solid var(--grid)}
+  .heat th,.heat td{border:1px solid var(--grid);padding:0;text-align:center;height:22px;font-size:11px}
+  .heat th{background:var(--soft);color:var(--mute);font-weight:600;height:auto;padding:2px 0;line-height:1.15}
+  .heat th small{display:block;font-weight:400;font-size:9.5px}
+  .heat td.lbl,.heat th.lbl{width:34%;text-align:left;padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px}
+  .heat td.P{background:var(--p);color:var(--p-ink)}.heat td.Z{background:var(--z);color:var(--z-ink)}
+  .heat td.V{background:var(--v);color:var(--v-ink)}.heat td.PZ{background:var(--pz);color:var(--pz-ink)}
+  .heat td.cT{background:var(--cT);color:var(--cT-ink)}.heat td.cBZ{background:var(--cBZ);color:var(--cBZ-ink)}
+  .heat td.cHV{background:var(--cHV);color:var(--cHV-ink)}.heat td.cS{background:var(--cS);color:var(--cS-ink)}
+  .heat td.here{background:#e3f4e8;color:#14532d}.heat td.away{background:#eceef1;color:#4b5563}.heat td.later{background:#fdf0b3;color:#7a5b00}
+  .heat tr.pres td.lbl{font-weight:600;background:var(--soft)}
+  table.mini{width:100%;border-collapse:collapse;font-size:12px}
+  .mini th,.mini td{border-bottom:1px solid var(--line);padding:3px 2px;text-align:center}
+  .mini th:first-child,.mini td:first-child{text-align:left}
+  .chk{margin:3px 0;font-size:12.5px}
+  .prog{height:4px;background:var(--soft);border-radius:2px;overflow:hidden;margin:6px 0}
+  .prog i{display:block;height:100%;background:var(--accent);width:0}
+  .addbox{border:1px solid var(--grid);border-radius:8px;padding:8px;margin:6px 0 10px;background:var(--soft)}
+  .addbox .res button{display:block;width:100%;text-align:left;border:0;background:#fff;border-bottom:1px solid var(--line);padding:6px 8px}
+  .addbox .res button:hover{background:#eaf1fb}
+  .pickbtn{display:block;width:100%;text-align:left;border:1px solid var(--grid);background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:6px}
+  .pickbtn:hover{background:var(--soft)}
+  .toast{position:fixed;left:10px;right:10px;bottom:10px;background:#1f2328;color:#fff;border-radius:8px;padding:9px 12px;font-size:13px;z-index:9}
+</style></head>
+<body>
+<div class="top"><h1>Тьютор</h1><div><button class="ib" id="btnReload" title="Перечитати всі аркуші">⟳</button> <button class="ib" id="btnMenu" title="Налаштування">⋯</button></div></div>
+<div id="load"></div>
+<div id="body"></div>
+<div id="toast" class="toast hidden"></div>
+<script>
+'use strict';
+const LAST_ROW=204, DATE_ROW=4, FIRST_COL=2, N_DATES=55;
+const CODE_CLASS={'Т':'cT','ХВ':'cHV','БЗ':'cBZ','С':'cS'};
+const WD=['нд','пн','вт','ср','чт','пт','сб'];
+const S={T:null,loading:false,err:'',dates:[],serialIdx:new Map(),name:'',watch:[],stu:'',addOpen:false,addQ:'',view:'main',span:14,di:0};
+const $=id=>document.getElementById(id);
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const serialToDate=n=>new Date(Math.round((n-25569)*86400000));
+const pad=n=>String(n).padStart(2,'0');
+const fmtDate=d=>`${pad(d.getUTCDate())}.${pad(d.getUTCMonth()+1)}`;
+const todayUTC=()=>{const t=new Date();return Date.UTC(t.getFullYear(),t.getMonth(),t.getDate())};
+const isLate=v=>typeof v==='string'&&v.startsWith('З');
+const isCode=v=>v==='Т'||v==='ХВ'||v==='БЗ'||v==='С';
+const bucket=v=>v==='П'?'P':isLate(v)?'Z':v==='В'?'V':v==='ПЗ'?'PZ':'';
+const nrm=s=>String(s??'').trim().replace(/\s+/g,' ').toLowerCase();
+const nameKey=s=>nrm(s).split(' ').sort().join(' ');
+const isTeacherSheet=n=>/^Вч\s*·/.test(n);
+const pctTxt=r=>r===null?'—':r+'%';
+const actLabel=a=>a.practicum?'Практикуми':a.course;
+const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!==undefined)e.textContent=x;return e};
+function toast(t){const x=$('toast');x.textContent=t;x.classList.remove('hidden');setTimeout(()=>x.classList.add('hidden'),2000)}
+async function copyText(text){
+  try{await navigator.clipboard.writeText(text)}catch(e){const ta=document.createElement('textarea');ta.value=text;ta.style.cssText='position:fixed;opacity:0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(_){}ta.remove()}
+  toast('Скопійовано');
+}
+/* ---- збережене ---- */
+function loadPrefs(){
+  S.name=store.get('tut.name')||store.get('att.tutor')||'';
+  try{S.watch=JSON.parse(store.get('tut.watch')||store.get('att.watch')||'[]')||[]}catch(e){S.watch=[]}
+  S.span=+(store.get('tut.span')||14)||14;
+}
+const saveWatch=()=>store.set('tut.watch',JSON.stringify(S.watch));
+function addWatch(name){const key=nameKey(name);if(!S.watch.some(w=>w.key===key)){S.watch.push({key,name});saveWatch()}}
+function removeWatch(key){S.watch=S.watch.filter(w=>w.key!==key);saveWatch();if(S.stu===key)S.stu=''}
+/* ---- читання ---- */
+async function readAll(progress){
+  const names=await Excel.run(async ctx=>{const c=ctx.workbook.worksheets;c.load('items/name');await ctx.sync();return c.items.map(s=>s.name)});
+  const want=names.filter(n=>isTeacherSheet(n)||n==='Практикуми'||n==='Сьогодні у школі'||n==='Учні 2.0');
+  const raw={};
+  for(let i=0;i<want.length;i+=4){
+    const chunk=want.slice(i,i+4);
+    const res=await Excel.run(async ctx=>{
+      const rs=chunk.map(n=>{const r=ctx.workbook.worksheets.getItem(n).getRangeByIndexes(0,0,LAST_ROW,FIRST_COL+N_DATES);r.load('values');return r});
+      await ctx.sync();return rs.map(r=>r.values)});
+    chunk.forEach((n,k)=>raw[n]=res[k]);progress(Math.min(i+4,want.length),want.length);
+  }
+  return raw;
+}
+function alignRow(head,row){
+  const out=new Array(N_DATES).fill('');
+  for(let k=0;k<N_DATES;k++){const idx=S.serialIdx.get(head[FIRST_COL+k]);if(idx===undefined)continue;const v=row[FIRST_COL+k];out[idx]=(v===''||v==null)?'':String(v)}
+  return out;
+}
+function parseAll(raw){
+  const master=raw['Практикуми']||raw['Сьогодні у школі']||Object.values(raw).find(v=>v[DATE_ROW-1]&&typeof v[DATE_ROW-1][FIRST_COL]==='number');
+  const mh=master?master[DATE_ROW-1]:[];
+  S.dates=[];S.serialIdx=new Map();
+  for(let i=0;i<N_DATES;i++){const v=mh[FIRST_COL+i];S.dates.push(typeof v==='number'?serialToDate(v):null);if(typeof v==='number')S.serialIdx.set(v,i)}
+  const acts=[],presence=new Map(),tutorOf=[];
+  for(const [name,v] of Object.entries(raw)){
+    const head=v[DATE_ROW-1]||[];
+    if(isTeacherSheet(name)||name==='Практикуми'){
+      const prac=name==='Практикуми',teacher=prac?'Практикуми':String(v[0][0]||'').trim();
+      for(let r=DATE_ROW;r<v.length;r++){
+        const course=String(v[r][0]??'').trim(),stu=String(v[r][1]??'').trim();if(!course||!stu)continue;
+        acts.push({teacher,course:prac?'Практикуми':course,student:stu,key:nameKey(stu),marks:alignRow(head,v[r]),practicum:prac});
+      }
+    }else if(name==='Сьогодні у школі'){
+      for(let r=DATE_ROW;r<v.length;r++){const stu=String(v[r][0]??'').trim();if(stu)presence.set(nameKey(stu),alignRow(head,v[r]).map(x=>x.toUpperCase()))}
+    }else if(name==='Учні 2.0'){
+      for(let r=1;r<v.length;r++){const stu=String(v[r][0]??'').trim(),tut=String(v[r][1]??'').trim();if(stu)tutorOf.push({name:stu,key:nameKey(stu),tutor:tut})}
+    }
+  }
+  const tutors=[...new Set(tutorOf.map(x=>x.tutor).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'uk'));
+  return {acts,presence,tutorOf,tutors};
+}
+async function load(){
+  if(S.loading)return;S.loading=true;S.err='';render();
+  try{
+    const raw=await readAll((a,b)=>{const p=$('prog'),t=$('progText');if(p)p.style.width=(a/b*100)+'%';if(t)t.textContent=`Читаю аркуші: ${a} з ${b}`});
+    S.T=parseAll(raw);
+    const t=todayUTC();let best=-1;S.dates.forEach((d,i)=>{if(d&&d.getTime()<=t)best=i});
+    S.di=best>=0?best:S.dates.findIndex(Boolean);
+  }catch(e){S.err='Не вдалося прочитати аркуші: '+(e.message||e)}
+  S.loading=false;render();
+}
+/* ---- обчислення ---- */
+function tally(marks,from,to){
+  const t={P:0,Z:0,V:0,PZ:0,X:0,lateDates:[],vDates:[],pzDates:[]};
+  S.dates.forEach((d,i)=>{if(!d)return;const ms=d.getTime();if((from!==null&&ms<from)||(to!==null&&ms>to))return;const m=marks[i];
+    if(m==='П')t.P++;else if(isLate(m)){t.Z++;t.lateDates.push([d,m])}else if(m==='В'){t.V++;t.vDates.push(d)}else if(m==='ПЗ'){t.PZ++;t.pzDates.push(d)}else if(isCode(m))t.X++});
+  t.total=t.P+t.Z+t.V+t.PZ;t.rate=t.total?Math.round((t.P+t.Z)/t.total*100):null;return t;
+}
+function period(){
+  const end=S.dates[S.di].getTime();
+  if(S.span===0)return {from:null,to:end,label:'весь період до сьогодні'};
+  return {from:end-(S.span-1)*86400000,to:end,label:`останні ${S.span} днів`};
+}
+function sigMsgs(z,v,pz){
+  const msgs=[],tags=[];let w=0;
+  if(z>=3){msgs.push(`${z} запізнення — тьюторський check-in`);tags.push('З≥3');w+=2}else if(z>=2){msgs.push(`${z} запізнення — помітити патерн`);tags.push('З≥2');w+=1}
+  if(v>=2){msgs.push(`${v} відсутності — перевірити причину та ризик втрати навчання`);tags.push('В≥2');w+=2}
+  if(pz>=1){msgs.push(`${pz} × ПЗ — тьюторський сигнал одразу`);tags.push('ПЗ');w+=3}
+  return {msgs,tags,w};
+}
+function myTutees(){
+  if(!S.T)return[];const seen=new Set(),out=[];
+  if(S.name){const k=nameKey(S.name);S.T.tutorOf.forEach(x=>{if(nameKey(x.tutor)===k&&!seen.has(x.key)){seen.add(x.key);out.push({...x,manual:false})}})}
+  S.watch.forEach(w=>{if(!seen.has(w.key)){seen.add(w.key);out.push({name:w.name,key:w.key,manual:true})}});
+  return out;
+}
+function tutData(t,per){
+  const acts=S.T.acts.filter(a=>a.key===t.key);
+  const rows=acts.map(a=>({a,t:tally(a.marks,per.from,per.to)}));
+  const sum={P:0,Z:0,V:0,PZ:0,X:0};rows.forEach(({t})=>Object.keys(sum).forEach(k=>sum[k]+=t[k]));
+  const total=sum.P+sum.Z+sum.V+sum.PZ,rate=total?Math.round((sum.P+sum.Z)/total*100):null;
+  const end=S.dates[S.di].getTime(),st=end-13*86400000,w={Z:0,V:0,PZ:0};
+  acts.forEach(a=>{const x=tally(a.marks,st,end);w.Z+=x.Z;w.V+=x.V;w.PZ+=x.PZ});
+  const sig=sigMsgs(w.Z,w.V,w.PZ);
+  const pr=S.T.presence.get(t.key)||null,pc={'Є':0,'Н':0,'О':0},anomalies=[];
+  if(pr)S.dates.forEach((d,i)=>{if(!d)return;const ms=d.getTime();if((per.from!==null&&ms<per.from)||(per.to!==null&&ms>per.to))return;
+    const p=pr[i];if(pc[p]!==undefined)pc[p]++;
+    acts.forEach(a=>{const m=a.marks[i];
+      if(p==='Н'&&(m==='П'||isLate(m)||m==='ПЗ'))anomalies.push({di:i,a,kind:'N',m});
+      if(p==='Є'&&m==='В')anomalies.push({di:i,a,kind:'E',m})})});
+  return {t,acts,rows,sum,total,rate,sig,pr,pc,anomalies};
+}
+/* ---- екрани ---- */
+function render(){
+  const load=$('load'),body=$('body');load.innerHTML='';body.innerHTML='';
+  if(S.loading){load.innerHTML='<div class="note" id="progText">Читаю аркуші…</div><div class="prog"><i id="prog"></i></div>';return}
+  if(S.err){const e=el('div','err',S.err);const b=el('button','btn','Спробувати ще раз');b.onclick=load;body.append(e,b);return}
+  if(!S.T){return}
+  if(S.view==='settings')return renderSettings(body);
+  if(!S.name&&!S.watch.length)return renderWho(body,true);
+  const per=period(),tutees=myTutees(),sel=S.stu&&tutees.find(x=>x.key===S.stu);
+  if(sel)renderTutee(body,sel,per);else renderList(body,tutees,per);
+}
+function renderWho(body,first){
+  body.appendChild(el('h2','','Хто ви?'));
+  body.appendChild(el('div','note','Оберіть своє ім\'я зі списку тьюторів у «Учні 2.0». Це робиться один раз. Панель лише читає таблицю, нічого не змінюючи.'));
+  S.T.tutors.forEach(n=>{const b=el('button','pickbtn',n);b.onclick=()=>{S.name=n;store.set('tut.name',n);S.view='main';render()};body.appendChild(b)});
+  if(first){const b=el('button','btn','Я не тьютор — додам учнів вручну');b.onclick=()=>{S.name='—';store.set('tut.name','—');S.view='main';S.addOpen=true;render()};body.appendChild(b)}
+}
+function renderSettings(body){
+  const back=el('button','back','‹ Назад');back.onclick=()=>{S.view='main';render()};body.append(back,el('h2','','Налаштування'));
+  body.appendChild(el('h3','','Мій тьютор'));
+  const sel=document.createElement('select');
+  [''].concat(S.T.tutors).forEach(n=>{const o=el('option','',n||'— не обрано —');o.value=n;sel.appendChild(o)});
+  sel.value=S.T.tutors.includes(S.name)?S.name:'';
+  sel.onchange=()=>{S.name=sel.value;store.set('tut.name',S.name);S.stu=''};body.appendChild(sel);
+  body.appendChild(el('h3','','Період у списку'));
+  const ps=document.createElement('select');[[14,'Останні 14 днів'],[30,'Останні 30 днів'],[0,'Весь період']].forEach(([v,l])=>{const o=el('option','',l);o.value=v;ps.appendChild(o)});
+  ps.value=S.span;ps.onchange=()=>{S.span=+ps.value;store.set('tut.span',S.span)};body.appendChild(ps);
+  const rf=el('button','btn','Перечитати таблицю');rf.onclick=load;body.appendChild(rf);
+  body.appendChild(el('div','note','Період завжди закінчується сьогоднішнім днем. Сигнали рахуються за 14 днів. П — присутній, З — запізнився, В — відсутній, ПЗ — у школі, але пропустив заняття.'));
+}
+function renderAdd(body){
+  const btn=el('button','btn',S.addOpen?'Закрити пошук':'+ Додати учня');btn.style.marginTop='0';
+  btn.onclick=()=>{S.addOpen=!S.addOpen;S.addQ='';render()};body.appendChild(btn);
+  if(!S.addOpen)return;
+  const box=el('div','addbox'),inp=el('input','txt');inp.placeholder='Прізвище або ім\'я';inp.value=S.addQ;
+  const res=el('div','res');
+  const fill=()=>{res.innerHTML='';
+    const have=new Set(myTutees().map(x=>x.key)),names=new Map();
+    S.T.tutorOf.forEach(x=>names.set(x.key,x.name));S.T.acts.forEach(a=>names.set(a.key,a.student));
+    const nq=nrm(S.addQ);
+    const c=[...names.entries()].filter(([k,n])=>!have.has(k)&&(!nq||nrm(n).includes(nq))).map(([,n])=>n).sort((a,b)=>a.localeCompare(b,'uk')).slice(0,8);
+    if(!c.length){res.appendChild(el('div','note','Нікого не знайдено.'));return}
+    c.forEach(n=>{const b=el('button','',n);b.onclick=()=>{addWatch(n);S.addQ='';render()};res.appendChild(b)});};
+  inp.oninput=()=>{S.addQ=inp.value;fill()};
+  box.append(inp,res);body.appendChild(box);fill();
+}
+function renderList(body,tutees,per){
+  renderAdd(body);
+  if(!tutees.length){body.appendChild(el('div','note',`У «Учні 2.0» не знайдено учнів із тьютором «${S.name}». Оберіть інше ім'я в «⋯» або додайте учнів вручну.`));return}
+  const data=tutees.map(t=>tutData(t,per)).sort((a,b)=>b.sig.w-a.sig.w||a.t.name.localeCompare(b.t.name,'uk'));
+  const flagged=data.filter(d=>d.sig.tags.length||d.anomalies.length).length;
+  const head=el('div','note',`Мої учні: ${data.length} · ${per.label}`+(flagged?` · потребують уваги: ${flagged}`:''));head.style.paddingTop='8px';body.appendChild(head);
+  data.forEach(d=>{
+    const c=el('div','tcard'),h=el('div','h'),b=el('b','',d.t.name),r=el('span');r.append(el('span','pct',pctTxt(d.rate)));
+    if(d.t.manual){const x=el('button','xbtn','×');x.title='Прибрати зі списку';x.onclick=ev=>{ev.stopPropagation();removeWatch(d.t.key);render()};r.append(' ',x)}
+    h.append(b,r);const cn=el('div','cn');c.append(h,cn);
+    const pill=(cls,t)=>cn.appendChild(el('span','pill '+cls,t));
+    if(!d.acts.length)pill('N','немає даних');
+    else{
+      if(d.sum.V)pill('V','В '+d.sum.V);if(d.sum.Z)pill('Z','З '+d.sum.Z);if(d.sum.PZ)pill('PZ','ПЗ '+d.sum.PZ);
+      if(d.sig.tags.length||d.anomalies.length)pill('sig','потребує уваги');
+      else if(!d.sum.V&&!d.sum.Z&&!d.sum.PZ)pill('ok','без пропусків');
+    }
+    c.onclick=()=>{S.stu=d.t.key;render()};body.appendChild(c);
+  });
+  const cp=el('button','btn','Копіювати зведення');cp.onclick=()=>copyText(data.map(d=>{
+    return `${d.t.name}: ${pctTxt(d.rate)} (П ${d.sum.P}, З ${d.sum.Z}, В ${d.sum.V}, ПЗ ${d.sum.PZ})`+(d.sig.tags.length?`; сигнали: ${d.sig.tags.join(', ')}`:'')+(d.anomalies.length?`; перевірити: ${d.anomalies.length}`:'')}).join('\n'));
+  body.appendChild(cp);
+}
+function markCell(m){
+  const td=document.createElement('td');if(!m)return td;const b=bucket(m);
+  if(b){td.className=b;td.textContent=b==='Z'?m.slice(1):m}else if(isCode(m)){td.className=CODE_CLASS[m];td.textContent=m}else td.textContent=m;
+  td.title=m;return td;
+}
+function renderTutee(body,t,per){
+  const d=tutData(t,per);
+  const back=el('button','back','‹ Усі мої учні');back.onclick=()=>{S.stu='';render()};body.appendChild(back);
+  if(t.manual){const rm=el('button','xbtn','Прибрати зі списку');rm.style.cssText='float:right;font-size:12px';rm.onclick=()=>{removeWatch(t.key);render()};body.appendChild(rm)}
+  const h=el('b','',t.name);h.style.fontSize='15px';body.appendChild(h);
+  const sub=el('div','note',`Період: ${per.label}. Занять і активностей: ${d.acts.length}.`);sub.style.padding='0 0 2px';body.appendChild(sub);
+  if(!d.acts.length){body.appendChild(el('div','note','На вчительських аркушах цього учня не знайдено.'));return}
+  const cards=el('div','cards');
+  cards.innerHTML=`<div class="card"><b>${pctTxt(d.rate)}</b>відвід.</div><div class="card P"><b>${d.sum.P}</b>П</div><div class="card Z"><b>${d.sum.Z}</b>З</div><div class="card V"><b>${d.sum.V}</b>В</div><div class="card PZ"><b>${d.sum.PZ}</b>ПЗ</div>`;
+  body.appendChild(cards);
+  if(d.sum.X)body.appendChild(el('div','note',`Не враховано (Т/ХВ/БЗ/С): ${d.sum.X}.`));
+  if(d.pr){const g=el('div','cn');g.style.cssText='display:flex;gap:4px;flex-wrap:wrap;margin:2px 0 6px';g.appendChild(el('span','note','У школі:'));
+    [['Є','P','був'],['Н','N','не було'],['О','Z','очікували пізніше']].forEach(([k,c,x])=>g.appendChild(el('span','pill '+c,`${x} ${d.pc[k]}`)));body.appendChild(g)}
+  if(d.sig.msgs.length){const box=el('div','pend');box.appendChild(el('b','',`Сигнали (14 днів, усі заняття разом)`));
+    const ul=el('ul');ul.style.cssText='margin:4px 0 0;padding-left:17px;font-size:12.5px';d.sig.msgs.forEach(m=>ul.appendChild(el('li','',m)));box.appendChild(ul);body.appendChild(box)}
+  const days=[];for(let i=S.di;i>=0&&days.length<10;i--)if(S.dates[i])days.unshift(i);
+  body.appendChild(el('h3','',`Останні дні: ${fmtDate(S.dates[days[0]])} – ${fmtDate(S.dates[days[days.length-1]])}`));
+  const tbl=el('table','heat');let th='<thead><tr><th class="lbl"></th>';
+  days.forEach(i=>{const dt=S.dates[i];th+=`<th>${dt.getUTCDate()}<small>${WD[dt.getUTCDay()]}</small></th>`});tbl.innerHTML=th+'</tr></thead>';
+  const tb=document.createElement('tbody');
+  if(d.pr){const tr=el('tr','pres');tr.appendChild(el('td','lbl','У школі'));
+    days.forEach(i=>{const td=el('td'),p=d.pr[i];td.className=p==='Є'?'here':p==='Н'?'away':p==='О'?'later':'';td.textContent=p||'';tr.appendChild(td)});tb.appendChild(tr)}
+  const inWin=d.acts.filter(a=>days.some(i=>a.marks[i]!==''));
+  inWin.forEach(a=>{const tr=el('tr'),l=el('td','lbl',actLabel(a));l.title=`${actLabel(a)} — ${a.teacher}`;tr.appendChild(l);days.forEach(i=>tr.appendChild(markCell(a.marks[i])));tb.appendChild(tr)});
+  tbl.appendChild(tb);body.appendChild(tbl);
+  if(d.anomalies.length){body.appendChild(el('h3','',`Варто перевірити (${d.anomalies.length})`));
+    d.anomalies.slice(0,12).forEach(x=>body.appendChild(el('div','chk',x.kind==='N'?`${fmtDate(S.dates[x.di])} · ${actLabel(x.a)}: «${x.m}», але в школі відмічено Н`:`${fmtDate(S.dates[x.di])} · ${actLabel(x.a)}: «В», хоча в школі був(ла) — за правилами це ПЗ?`)));
+    if(d.anomalies.length>12)body.appendChild(el('div','note',`…і ще ${d.anomalies.length-12} у повному звіті.`))}
+  body.appendChild(el('h3','','За заняттями'));
+  const mt=el('table','mini');mt.innerHTML='<thead><tr><th>Заняття</th><th>П</th><th>З</th><th>В</th><th>ПЗ</th><th>%</th></tr></thead>';
+  const mb=document.createElement('tbody');
+  d.rows.filter(({t})=>t.total+t.X>0).forEach(({a,t})=>{const tr=document.createElement('tr');
+    tr.innerHTML=`<td><span></span><div class="sub" style="color:var(--mute);font-size:11px"></div></td><td>${t.P}</td><td>${t.Z}</td><td>${t.V}</td><td>${t.PZ}</td><td>${t.rate===null?'—':t.rate}</td>`;
+    tr.querySelector('span').textContent=actLabel(a);tr.querySelector('.sub').textContent=a.practicum?'':a.teacher;mb.appendChild(tr)});
+  mt.appendChild(mb);body.appendChild(mt);
+  const cp=el('button','btn','Копіювати звіт');cp.onclick=()=>copyText(reportText(d,per));body.appendChild(cp);
+}
+function reportText(d,per){
+  const L=[`${d.t.name} — відвідування (${per.label})`,`Загалом: ${pctTxt(d.rate)} · П ${d.sum.P}, З ${d.sum.Z}, В ${d.sum.V}, ПЗ ${d.sum.PZ}`+(d.sum.X?`, не враховано ${d.sum.X}`:'')];
+  if(d.pr)L.push(`У школі: був ${d.pc['Є']}, не було ${d.pc['Н']}, очікували пізніше ${d.pc['О']}`);
+  if(d.sig.msgs.length)L.push('Сигнали (14 днів): '+d.sig.msgs.join('; '));
+  L.push('За заняттями:');
+  d.rows.filter(({t})=>t.total+t.X>0).forEach(({a,t})=>{
+    L.push(`• ${actLabel(a)}${a.practicum?'':' ('+a.teacher+')'}: ${pctTxt(t.rate)} (П ${t.P}, З ${t.Z}, В ${t.V}, ПЗ ${t.PZ})`);
+    if(t.vDates.length)L.push(`   В: ${t.vDates.map(fmtDate).join(', ')}`);
+    if(t.pzDates.length)L.push(`   ПЗ: ${t.pzDates.map(fmtDate).join(', ')}`);
+    if(t.lateDates.length)L.push(`   З: ${t.lateDates.map(([dt,m])=>`${fmtDate(dt)} (${m.slice(1)} хв)`).join(', ')}`)});
+  if(d.anomalies.length){L.push('Варто перевірити:');d.anomalies.forEach(x=>L.push(`• ${fmtDate(S.dates[x.di])} · ${actLabel(x.a)}: `+(x.kind==='N'?`«${x.m}», але в школі Н`:'«В», хоча в школі був(ла) — можливо, ПЗ')))}
+  return L.join('\n');
+}
+function init(){
+  loadPrefs();
+  $('btnReload').onclick=load;
+  $('btnMenu').onclick=()=>{if(!S.T)return;S.view=S.view==='settings'?'main':'settings';render()};
+  load();
+}
+if(typeof Office!=='undefined'&&Office.onReady)Office.onReady(i=>{if(i.host===Office.HostType.Excel)init();else $('body').textContent='Ця панель працює лише в Excel.'});
+else $('body').textContent='Не вдалося завантажити Office.js. Відкрийте надбудову з Excel.';
+</script></body></html>
