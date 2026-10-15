@@ -185,7 +185,7 @@ const WD = ['нд','пн','вт','ср','чт','пт','сб'];
 
 const S = {
   sheetName: null, sheetList: [], dates: [], rows: [], courses: [], di: 0, course: '', tab: 'marks',
-  undo: null, lateOpen: null, sched: {}, short: {}, card: null, sigOpen: false, dayMenu: false,
+  undo: null, lateOpen: null, sched: {}, short: {}, card: null, sigOpen: false, dayMenu: false, pick: null, done: {}, doneOpen: false,
   view: 'main'                                   // main | settings | wizard | picker
 };
 const $ = id => document.getElementById(id);
@@ -211,9 +211,12 @@ const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls)
 function loadPrefs(){
   try{ S.sched = JSON.parse(store.get('att.sched') || '{}') || {}; }catch(e){ S.sched = {}; }
   try{ S.short = JSON.parse(store.get('att.short') || '{}') || {}; }catch(e){ S.short = {}; }
+  try{ S.done = JSON.parse(store.get('att.sigDone') || '{}') || {}; }catch(e){ S.done = {}; }
   if (Object.keys(S.sched).length && !store.get('att.schedDone')) store.set('att.schedDone', '1');
 }
 const saveSched = () => store.set('att.sched', JSON.stringify(S.sched));
+const saveDone = () => store.set('att.sigDone', JSON.stringify(S.done));
+const sigKey = r => `${S.sheetName}|${r.course}|${r.student}`;
 const saveShort = () => store.set('att.short', JSON.stringify(S.short));
 const hasSched = c => Array.isArray(S.sched[c]) && S.sched[c].length > 0;
 const anySched = () => S.courses.some(c => hasSched(c.name));
@@ -298,11 +301,12 @@ async function undo(){
 /* ---------- обчислення ---------- */
 const courseRows = () => S.rows.filter(r => r.course === S.course);
 function tallyMarks(marks, from, to){
-  const t = {P:0,Z:0,V:0,PZ:0,X:0, lateDates:[], vDates:[], pzDates:[]};
+  const t = {P:0,Z:0,V:0,PZ:0,X:0, lateDates:[], vDates:[], pzDates:[], lastInc:0};
   S.dates.forEach((d,i) => {
     if (!d) return; const ms = d.getTime();
     if ((from !== null && ms < from) || (to !== null && ms > to)) return;
     const m = marks[i];
+    if ((m === 'В' || m === 'ПЗ' || isLate(m)) && ms > t.lastInc) t.lastInc = ms;
     if (m === 'П') t.P++; else if (isLate(m)){ t.Z++; t.lateDates.push([d,m]); }
     else if (m === 'В'){ t.V++; t.vDates.push(d); } else if (m === 'ПЗ'){ t.PZ++; t.pzDates.push(d); }
     else if (isCode(m)) t.X++;
@@ -323,7 +327,7 @@ function sigMsgs(z, v, pz){
 }
 function courseSignals(){
   const end = S.dates[S.di].getTime(), st = end - 13*86400000, out = [];
-  courseRows().forEach(r => { const t = tallyMarks(r.marks, st, end); const s = sigMsgs(t.Z, t.V, t.PZ); if (s.msgs.length) out.push({r, ...s}); });
+  courseRows().forEach(r => { const t = tallyMarks(r.marks, st, end); const s = sigMsgs(t.Z, t.V, t.PZ); if (s.msgs.length) out.push({r, ...s, last: t.lastInc, done: (S.done[sigKey(r)] || 0) >= t.lastInc}); });
   return out.sort((a,b) => b.w - a.w);
 }
 function pendingFor(course){
@@ -417,8 +421,17 @@ function renderMarks(){
   }
 
   // 3. прогрес і дії
+  if (S.pick && (S.pick.di !== di || S.pick.course !== S.course)) S.pick = null;
   const filled = rows.filter(r => r.marks[di] !== '').length;
   const act = el('div','actions');
+  if (S.pick){
+    const n = S.pick.set.size;
+    act.appendChild(el('span','meta', n ? `Обрано: ${n}` : 'Позначте учнів, які були на заході'));
+    const go = el('button','btn prim','Поставити БЗ'); go.disabled = !n;
+    go.onclick = () => { const ch = rows.filter(r => S.pick.set.has(r.row)).map(r => ({row:r.row, di, value:'БЗ'})); S.pick = null; apply(ch, `БЗ: ${ch.length} (${fmtDate(S.dates[di])})`); };
+    const cn = el('button','ib','Скасувати'); cn.onclick = () => { S.pick = null; render(); };
+    act.append(go, cn); root.appendChild(act);
+  } else {
   act.appendChild(el('span','meta', `Внесено ${filled} з ${rows.length}`));
   const allP = el('button','btn prim','Усі присутні'); allP.title = 'Відмітити «П» усім, у кого ще порожньо'; allP.disabled = filled === rows.length;
   allP.onclick = () => apply(rows.filter(r => r.marks[di] === '').map(r => ({row:r.row, di, value:'П'})), `Решту відмічено «П» (${fmtDate(S.dates[di])})`);
@@ -427,23 +440,33 @@ function renderMarks(){
   if (S.dayMenu){
     const m = el('div','menu'); m.appendChild(el('div','lbl','Заняття не відбулося (весь курс):'));
     CODE_MENU.forEach(([code, label]) => { const b = el('button','', `${code} · ${label}`); b.onclick = () => { S.dayMenu = false; setCourseCode(code); }; m.appendChild(b); });
+    const pk = el('button','','БЗ лише для частини учнів…'); pk.onclick = () => { S.dayMenu = false; S.pick = {di, course: S.course, set: new Set()}; render(); }; m.insertBefore(pk, m.children[1]);
     m.appendChild(document.createElement('hr'));
     const clr = el('button','','Очистити відмітки цього дня'); clr.onclick = () => { S.dayMenu = false; clearDay(); }; m.appendChild(clr);
     act.appendChild(m);
   }
   root.appendChild(act);
+  }
 
   // 4. увага
-  const sigs = courseSignals();
+  const allSigs = courseSignals(), sigs = allSigs.filter(o => !o.done), doneL = allSigs.filter(o => o.done);
   if (sigs.length){
-    const a = el('div','alert'); a.append(el('span','', `Увага: ${sigs.length} ${sigs.length === 1 ? 'учень потребує' : 'учні потребують'} уваги`), el('b','', S.sigOpen ? 'Сховати' : 'Переглянути ›'));
+    const a = el('div','alert'); a.append(el('span','', `Увага: ${sigs.length} ${(n => (n%10===1&&n%100!==11) ? 'учень потребує' : (n%10>=2&&n%10<=4&&(n%100<10||n%100>=20)) ? 'учні потребують' : 'учнів потребують')(sigs.length)} уваги`), el('b','', S.sigOpen ? 'Сховати' : 'Переглянути ›'));
     a.onclick = () => { S.sigOpen = !S.sigOpen; render(); }; root.appendChild(a);
     if (S.sigOpen){
       const box = el('div','siglist');
       sigs.forEach(o => {
         const d = el('div','s'), nb = el('button','nmb', o.r.student); nb.onclick = () => { S.card = o.r; render(); };
-        const ul = el('ul'); o.msgs.forEach(m => ul.appendChild(el('li','',m))); d.append(nb, ul); box.appendChild(d);
-      }); root.appendChild(box);
+        const ul = el('ul'); o.msgs.forEach(m => ul.appendChild(el('li','',m)));
+        const ok = el('button','tolink','Опрацьовано ✓'); ok.title = 'Приховати, доки не з\'явиться нове порушення';
+        ok.onclick = () => { S.done[sigKey(o.r)] = o.last; saveDone(); render(); toast(`${o.r.student}: сигнал опрацьовано`, false); };
+        d.append(nb, ul, ok); box.appendChild(d);
+      });
+      if (doneL.length){
+        const t = el('button','tolink', (S.doneOpen ? '▾' : '▸') + ` Опрацьовані: ${doneL.length}`); t.onclick = () => { S.doneOpen = !S.doneOpen; render(); }; box.appendChild(t);
+        if (S.doneOpen) doneL.forEach(o => { const d = el('div','s', o.r.student + ' '); const b = el('button','tolink','Повернути'); b.onclick = () => { delete S.done[sigKey(o.r)]; saveDone(); render(); }; d.appendChild(b); box.appendChild(d); });
+      }
+      root.appendChild(box);
     }
   }
 
@@ -457,7 +480,11 @@ function renderMarks(){
     const tn = el('td','name'), nm = el('button','nm', r.student); nm.title = 'Картка учня'; nm.onclick = () => { S.card = r; render(); };
     tn.appendChild(nm); tr.appendChild(tn);
     const cell = (label, cls, on, h, title) => { const td = el('td','mk'), b = el('button','cell ' + cls + (on ? ' on' : ''), label); b.title = title; b.onclick = h; td.appendChild(b); return td; };
-    if (isCode(v)){
+    if (S.pick && !isCode(v)){
+      const td = el('td'); td.colSpan = 4; const on = S.pick.set.has(r.row);
+      const b = el('button','cell code' + (on ? ' cBZ' : ''), on ? '☑ БЗ' : '☐');
+      b.onclick = () => { on ? S.pick.set.delete(r.row) : S.pick.set.add(r.row); render(); }; td.appendChild(b); tr.appendChild(td);
+    } else if (isCode(v)){
       const td = el('td'); td.colSpan = 4; const b = el('button','cell code ' + CODE_CLASS[v], `${v} · ${CODE_NAME[v]}`);
       b.title = 'Натисніть, щоб зняти'; b.onclick = () => setMark(r, ''); td.appendChild(b); tr.appendChild(td);
     } else {
@@ -475,7 +502,7 @@ function renderMarks(){
     }
   });
   tbl.appendChild(tb); root.appendChild(tbl);
-  root.appendChild(el('div','leg','П присутній · З запізнився (оберіть хвилини) · В відсутній · ПЗ у школі, але не був на занятті. Натисніть на відмітку ще раз, щоб зняти.'));
+  root.appendChild(el('div','leg','П присутній · З запізнився (оберіть хвилини) · В відсутній · ПЗ у школі, але не був на занятті. БЗ частині учнів: «⋯» → «БЗ лише для частини учнів». Натисніть на відмітку ще раз, щоб зняти.'));
 }
 function step(dir){ const i = adjacent(dir); if (i !== null){ S.di = i; S.lateOpen = null; S.dayMenu = false; render(); } }
 function setMark(r, value){
@@ -508,6 +535,11 @@ function renderCard(){
   dl('V','В', t.vDates.map(fmtDate)); dl('PZ','ПЗ', t.pzDates.map(fmtDate)); dl('Z','З', t.lateDates.map(([d,m]) => `${fmtDate(d)} (${m.slice(1)} хв)`));
   if (!t.vDates.length && !t.pzDates.length && !t.lateDates.length) box.appendChild(el('div','note','Пропусків і запізнень немає.'));
   const end = S.dates[S.di].getTime(), w = tallyMarks(r.marks, end - 13*86400000, end), s = sigMsgs(w.Z, w.V, w.PZ);
+  const ex = courseSignals().find(o => o.r === r);
+  if (ex){
+    const bt = el('button','btn', ex.done ? 'Сигнал опрацьовано · Повернути' : 'Опрацьовано ✓');
+    bt.onclick = () => { if (ex.done) delete S.done[sigKey(r)]; else S.done[sigKey(r)] = ex.last; saveDone(); render(); }; box.appendChild(bt);
+  }
   if (s.msgs.length){ box.appendChild(el('div','hint','Увага (14 днів до вибраної дати):')); const ul = el('ul'); ul.style.cssText = 'margin:0;padding-left:16px;font-size:12.5px'; s.msgs.forEach(m => ul.appendChild(el('li','',m))); box.appendChild(ul); }
 }
 
@@ -607,6 +639,7 @@ function renderSettings(){
     i.oninput = () => { if (i.value.trim()) S.short[c.name] = i.value; else delete S.short[c.name]; saveShort(); };
     r.append(el('span','',c.name), i); box.appendChild(r);
   });
+  const rd = el('button','btn','Показати всі опрацьовані сигнали знову'); rd.onclick = () => { S.done = {}; saveDone(); toast('Готово', false); }; box.appendChild(rd);
   const rf = el('button','btn','Оновити дані з таблиці'); rf.style.marginTop = '12px'; rf.onclick = refresh; box.appendChild(rf);
   box.appendChild(el('h4','','Що означають коди'));
   const help = el('div','note'); help.style.padding = '0';
