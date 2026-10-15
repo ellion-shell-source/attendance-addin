@@ -172,6 +172,20 @@
   .xbtn{border:0;background:none;color:var(--mute);font-size:16px;line-height:1;padding:0 2px}
   .xbtn:hover{color:var(--v-ink)}
 
+  .daybar{margin:6px 0 2px}
+  .daybar .hint{font-size:12px;color:var(--mute);margin-bottom:4px}
+  .daybar .chips{display:flex;flex-wrap:wrap;gap:5px}
+  .dchip{border:1px solid var(--grid);background:#fff;border-radius:8px;padding:4px 8px;font-size:12px;line-height:1.2;text-align:left}
+  .dchip small{display:block;font-size:10.5px;color:var(--mute)}
+  .dchip.full{background:var(--p);color:var(--p-ink);border-color:transparent} .dchip.full small{color:var(--p-ink)}
+  .dchip.part{background:var(--z);color:var(--z-ink);border-color:transparent} .dchip.part small{color:var(--z-ink)}
+  .dchip.on{outline:2px solid var(--accent);font-weight:600}
+  .dchip.nosched{border-style:dashed;color:var(--mute)}
+  .daybar .sub{font-size:11.5px;color:var(--mute);margin:5px 0 2px}
+  #shortBody .sr{display:flex;gap:6px;align-items:center;margin-bottom:4px;font-size:11.5px}
+  #shortBody .sr span{flex:1;min-width:0;line-height:1.2}
+  #shortBody input{width:42%;font:inherit;border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+
   /* налаштування */
   .settings{background:var(--soft);border-radius:8px;padding:10px;margin-bottom:8px}
   .settings label.l{font-size:12px;color:var(--mute);display:block;margin-bottom:4px}
@@ -200,7 +214,9 @@
   <input class="txt" id="tutorName" placeholder="Прізвище Ім'я">
   <h4>Розклад курсів (дні тижня)</h4>
   <table class="sched"><thead><tr><th>Курс</th><th>пн</th><th>вт</th><th>ср</th><th>чт</th><th>пт</th></tr></thead><tbody id="schedBody"></tbody></table>
-  <button class="btn" id="schedGuess">Підказати з наявних відміток</button>
+  <h4>Короткі назви курсів (для кнопок)</h4>
+  <div id="shortBody"></div>
+  <button class="btn" id="schedGuess">Підказати розклад з наявних відміток</button>
   <button class="btn" id="schedClear">Скинути розклад</button>
   <div class="note">Розклад зберігається лише в цьому браузері й не змінює таблицю.</div>
 </div>
@@ -215,6 +231,7 @@
     <button class="today-btn" id="todayBtn">Сьогодні</button>
   </div>
   <select id="courseSel"></select>
+  <div id="dayBar" class="daybar hidden"></div>
   <label class="tog" id="onlyWrap" style="margin-top:6px"><input type="checkbox" id="onlyLessons" checked> стрілки ‹ › — лише дні цього курсу</label>
 
   <div class="tabs">
@@ -300,7 +317,7 @@ const WD = ['нд','пн','вт','ср','чт','пт','сб'];
 const S = {
   sheetName: null, dates: [], rows: [], courses: [],
   di: 0, course: '', tab: 'marks', undo: null, lateOpen: null,
-  sched: {}, student: '', serials: [], serialIdx: new Map(), tError: '', watch: [], allSearch: false, addOpen: false, addQ: '',
+  sched: {}, student: '', serials: [], serialIdx: new Map(), tError: '', short: {}, watch: [], allSearch: false, addOpen: false, addQ: '',
   T: null, tLoading: false, tutorName: '', tstu: '', tWin: 0
 };
 const $ = id => document.getElementById(id);
@@ -331,6 +348,21 @@ function clearError(){ $('err').classList.add('hidden'); }
 function loadSched(){
   try{ S.sched = JSON.parse(store.get('att.sched') || '{}') || {}; }catch(e){ S.sched = {}; }
 }
+function loadShort(){ try{ S.short = JSON.parse(store.get('att.short') || '{}') || {}; }catch(e){ S.short = {}; } }
+function saveShort(){ store.set('att.short', JSON.stringify(S.short)); }
+const wordsOf = n => n.replace(/[:,.()]/g,' ').split(/\s+/).filter(Boolean);
+function autoShort(course){
+  const mine = wordsOf(course);
+  const others = S.courses.map(c => c.name).filter(n => n !== course).map(wordsOf);
+  let out = course;
+  for (let n = Math.min(2, mine.length); n <= mine.length; n++){
+    const pre = mine.slice(0,n).join(' ');
+    if (!others.some(o => o.slice(0,n).join(' ') === pre)){ out = pre; break; }
+  }
+  return out.length > 22 ? out.slice(0,21) + '…' : out;
+}
+const shortName = c => (S.short[c] && S.short[c].trim()) || autoShort(c);
+const plZan = n => { const a = n % 10, b = n % 100; return (a === 1 && b !== 11) || (a >= 2 && a <= 4 && (b < 10 || b >= 20)) ? 'заняття' : 'занять'; };
 function saveSched(){ store.set('att.sched', JSON.stringify(S.sched)); }
 function hasSched(course){ return Array.isArray(S.sched[course]) && S.sched[course].length > 0; }
 function isLessonDay(course, di){
@@ -492,6 +524,7 @@ function render(){
     const o = document.createElement('option'); o.value = c.name; o.textContent = `${c.name} (${c.n})`; cs.appendChild(o);
   });
   cs.value = S.course;
+  renderDayBar();
 
   const pc = S.courses.reduce((a,c) => a + pendingFor(c.name).length, 0);
   $('tabOverview').innerHTML = 'Огляд' + (pc ? `<span class="cnt">${pc}</span>` : '');
@@ -503,6 +536,42 @@ function render(){
   if (S.tab === 'student') renderStudent();
   if (S.tab === 'tutor') renderTutor();
   if (!$('settings').classList.contains('hidden')) renderSettings();
+}
+
+function renderDayBar(){
+  const bar = $('dayBar');
+  const anySched = S.courses.some(c => hasSched(c.name));
+  if (!anySched){ bar.classList.add('hidden'); return; }
+  bar.classList.remove('hidden'); bar.innerHTML = '';
+  const today = S.courses.filter(c => hasSched(c.name) && isLessonDay(c.name, S.di));
+  const free = S.courses.filter(c => !hasSched(c.name));
+  const hint = document.createElement('div'); hint.className = 'hint';
+  hint.textContent = today.length ? `У цей день за розкладом: ${today.length} ${plZan(today.length)}` : 'За розкладом у цей день занять немає';
+  bar.appendChild(hint);
+  const mk = (c, extra) => {
+    const rows = S.rows.filter(r => r.course === c.name);
+    const st = dayStatus(rows, S.di);
+    const filled = rows.filter(r => r.marks[S.di] !== '').length;
+    const b = document.createElement('button');
+    b.className = 'dchip' + (extra ? ' ' + extra : '') + (st === 'full' ? ' full' : st === 'part' ? ' part' : '') + (c.name === S.course ? ' on' : '');
+    b.innerHTML = '<span></span><small></small>';
+    b.firstChild.textContent = shortName(c.name);
+    b.lastChild.textContent = `${filled}/${rows.length}`;
+    b.title = c.name;
+    b.onclick = () => { S.course = c.name; S.lateOpen = null; store.set('att.course', S.course); render(); };
+    return b;
+  };
+  if (today.length){
+    const ch = document.createElement('div'); ch.className = 'chips';
+    today.forEach(c => ch.appendChild(mk(c)));
+    bar.appendChild(ch);
+  }
+  if (free.length){
+    const sub = document.createElement('div'); sub.className = 'sub'; sub.textContent = 'Без розкладу (показано завжди):'; bar.appendChild(sub);
+    const ch = document.createElement('div'); ch.className = 'chips';
+    free.forEach(c => ch.appendChild(mk(c, 'nosched')));
+    bar.appendChild(ch);
+  }
 }
 
 function renderMarks(){
@@ -1132,6 +1201,14 @@ function tutReportText(d, per){
 
 /* ---------- налаштування: розклад ---------- */
 function renderSettings(){
+  const sb = $('shortBody'); sb.innerHTML = '';
+  S.courses.forEach(c => {
+    const r = document.createElement('div'); r.className = 'sr';
+    const l = document.createElement('span'); l.textContent = c.name;
+    const i = document.createElement('input'); i.placeholder = autoShort(c.name); i.value = S.short[c.name] || '';
+    i.oninput = () => { if (i.value.trim()) S.short[c.name] = i.value; else delete S.short[c.name]; saveShort(); renderDayBar(); };
+    r.append(l, i); sb.appendChild(r);
+  });
   const body = $('schedBody'); body.innerHTML = '';
   S.courses.forEach(c => {
     const tr = document.createElement('tr');
@@ -1253,7 +1330,7 @@ function showPicker(list){
   });
 }
 async function init(){
-  wire(); loadSched(); loadWatch();
+  wire(); loadSched(); loadShort(); loadWatch();
   S.tutorName = store.get('att.tutor') || ''; $('tutorName').value = S.tutorName;
   S.allSearch = store.get('att.allsearch') === '1'; $('allSearch').checked = S.allSearch;
   try{
