@@ -384,9 +384,9 @@ function renderMarks(){
     const o = el('option','', (i === today ? 'Сьогодні · ' : '') + fmtFull(d) + (hasSched(S.course) && !isLessonDay(S.course,i) ? ' ·—' : ''));
     o.value = i; ds.appendChild(o);
   });
-  ds.value = di; ds.onchange = () => { S.di = +ds.value; S.lateOpen = null; S.dayMenu = false; render(); };
+  ds.value = di; ds.onchange = () => goDay(+ds.value);
   dr.append(prev, ds, next); root.appendChild(dr);
-  if (di !== today && today >= 0){ const l = el('button','tolink','↩ До сьогодні'); l.onclick = () => { S.di = today; render(); }; root.appendChild(l); }
+  if (di !== today && today >= 0){ const l = el('button','tolink','↩ До сьогодні'); l.onclick = () => goDay(today); root.appendChild(l); }
 
   // 2. курси дня
   if (!anySched()){
@@ -504,7 +504,18 @@ function renderMarks(){
   tbl.appendChild(tb); root.appendChild(tbl);
   root.appendChild(el('div','leg','П присутній · З запізнився (оберіть хвилини) · В відсутній · ПЗ у школі, але не був на занятті. БЗ частині учнів: «⋯» → «БЗ лише для частини учнів». Натисніть на відмітку ще раз, щоб зняти.'));
 }
-function step(dir){ const i = adjacent(dir); if (i !== null){ S.di = i; S.lateOpen = null; S.dayMenu = false; render(); } }
+function goDay(i){
+  S.di = i; S.lateOpen = null; S.dayMenu = false; S.pick = null;
+  if (anySched()){
+    const day = S.courses.filter(c => hasSched(c.name) && isLessonDay(c.name, i));
+    if (day.length && !day.some(c => c.name === S.course)){
+      const open = day.find(c => dayStatus(S.rows.filter(r => r.course === c.name), i) !== 'full');
+      S.course = (open || day[0]).name; store.set('att.course', S.course);
+    }
+  }
+  render();
+}
+function step(dir){ const i = adjacent(dir); if (i !== null) goDay(i); }
 function setMark(r, value){
   S.lateOpen = null;
   apply([{row:r.row, di:S.di, value}], value ? `${r.student}: ${value} (${fmtDate(S.dates[S.di])})` : `${r.student}: очищено`);
@@ -680,7 +691,7 @@ async function init(){
     S.course = store.get('att.course') || '';
     await loadData(); S.di = todayIdx();
     S.view = store.get('att.schedDone') ? 'main' : 'wizard';
-    render();
+    goDay(S.di);
   }catch(e){ showError('Помилка: ' + (e.message || e)); }
 }
 if (typeof Office !== 'undefined' && Office.onReady){

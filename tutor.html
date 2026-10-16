@@ -31,7 +31,7 @@
   .pill.V{background:var(--v);color:var(--v-ink)}.pill.PZ{background:var(--pz);color:var(--pz-ink)}
   .pill.N{background:#eceef1;color:#4b5563}.pill.sig{background:#fff;border:1px solid #e0a43a;color:#8a5a00}
   .pill.ok{background:var(--p);color:var(--p-ink)}
-  .back{border:0;background:none;color:var(--accent);padding:0;margin:0 0 6px;font-weight:600}
+  .back{display:block;border:0;background:none;color:var(--accent);padding:0;margin:0 0 6px;font-weight:600}
   .xbtn{border:0;background:none;color:var(--mute);font-size:16px;line-height:1;padding:0 2px}
   .xbtn:hover{color:var(--v-ink)}
   .cards{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin:8px 0}
@@ -53,6 +53,13 @@
   .heat td.cHV{background:var(--cHV);color:var(--cHV-ink)}.heat td.cS{background:var(--cS);color:var(--cS-ink)}
   .heat td.here{background:#e3f4e8;color:#14532d}.heat td.away{background:#eceef1;color:#4b5563}.heat td.later{background:#fdf0b3;color:#7a5b00}
   .heat tr.pres td.lbl{font-weight:600;background:var(--soft)}
+  .heat td.bad{box-shadow:inset 0 0 0 2px #c0392b;font-weight:700}
+  .heat td.warn{box-shadow:inset 0 0 0 2px #e0a43a;font-weight:700}
+  .heat td.warn::after{content:'!';color:#b45309;font-size:9px;vertical-align:super;margin-left:1px}
+  .heat th.badday{background:#fbe3e0;color:#8a1c1c}
+  .heat th.warnday{background:#fdf0d5;color:#8a5a00}
+  .hleg{font-size:11px;color:var(--mute);margin:2px 0 6px}
+  .hleg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:3px;vertical-align:-1px}
   table.mini{width:100%;border-collapse:collapse;font-size:12px}
   .mini th,.mini td{border-bottom:1px solid var(--line);padding:3px 2px;text-align:center}
   .mini th:first-child,.mini td:first-child{text-align:left}
@@ -268,10 +275,11 @@ function renderList(body,tutees,per){
     return `${d.t.name}: ${pctTxt(d.rate)} (П ${d.sum.P}, З ${d.sum.Z}, В ${d.sum.V}, ПЗ ${d.sum.PZ})`+(d.sig.tags.length?`; сигнали: ${d.sig.tags.join(', ')}`:'')+(d.anomalies.length?`; перевірити: ${d.anomalies.length}`:'')}).join('\n'));
   body.appendChild(cp);
 }
-function markCell(m){
+function markCell(m,flag){
   const td=document.createElement('td');if(!m)return td;const b=bucket(m);
   if(b){td.className=b;td.textContent=b==='Z'?m.slice(1):m}else if(isCode(m)){td.className=CODE_CLASS[m];td.textContent=m}else td.textContent=m;
-  td.title=m;return td;
+  if(flag)td.classList.add(flag);
+  if(flag==='warn')td.title=m+' — розбіжність зі «Сьогодні у школі»';else td.title=m;return td;
 }
 function renderTutee(body,t,per){
   const d=tutData(t,per);
@@ -290,14 +298,19 @@ function renderTutee(body,t,per){
     const ul=el('ul');ul.style.cssText='margin:4px 0 0;padding-left:17px;font-size:12.5px';d.sig.msgs.forEach(m=>ul.appendChild(el('li','',m)));box.appendChild(ul);body.appendChild(box)}
   const days=[];for(let i=S.di;i>=0&&days.length<10;i--)if(S.dates[i])days.unshift(i);
   body.appendChild(el('h3','',`Останні дні: ${fmtDate(S.dates[days[0]])} – ${fmtDate(S.dates[days[days.length-1]])}`));
+  const flagOf=(a,i)=>{const m=a.marks[i];
+    if(d.anomalies.some(x=>x.a===a&&x.di===i))return 'warn';
+    if(m==='В'||m==='ПЗ'||m==='З15'||m==='З20'||m==='З30+')return 'bad';return ''};
+  const dayFlag=i=>{let f='';d.acts.forEach(a=>{const x=flagOf(a,i);if(x==='bad')f='bad';else if(x==='warn'&&!f)f='warn'});return f};
   const tbl=el('table','heat');let th='<thead><tr><th class="lbl"></th>';
-  days.forEach(i=>{const dt=S.dates[i];th+=`<th>${dt.getUTCDate()}<small>${WD[dt.getUTCDay()]}</small></th>`});tbl.innerHTML=th+'</tr></thead>';
+  days.forEach(i=>{const dt=S.dates[i],df=dayFlag(i);th+=`<th class="${df?df+'day':''}">${dt.getUTCDate()}<small>${WD[dt.getUTCDay()]}</small></th>`});tbl.innerHTML=th+'</tr></thead>';
   const tb=document.createElement('tbody');
   if(d.pr){const tr=el('tr','pres');tr.appendChild(el('td','lbl','У школі'));
     days.forEach(i=>{const td=el('td'),p=d.pr[i];td.className=p==='Є'?'here':p==='Н'?'away':p==='О'?'later':'';td.textContent=p||'';tr.appendChild(td)});tb.appendChild(tr)}
   const inWin=d.acts.filter(a=>days.some(i=>a.marks[i]!==''));
-  inWin.forEach(a=>{const tr=el('tr'),l=el('td','lbl',actLabel(a));l.title=`${actLabel(a)} — ${a.teacher}`;tr.appendChild(l);days.forEach(i=>tr.appendChild(markCell(a.marks[i])));tb.appendChild(tr)});
+  inWin.forEach(a=>{const tr=el('tr'),l=el('td','lbl',actLabel(a));l.title=`${actLabel(a)} — ${a.teacher}`;tr.appendChild(l);days.forEach(i=>tr.appendChild(markCell(a.marks[i],flagOf(a,i))));tb.appendChild(tr)});
   tbl.appendChild(tb);body.appendChild(tbl);
+  const lg=el('div','hleg');lg.innerHTML='<i style="box-shadow:inset 0 0 0 2px #c0392b"></i>В, ПЗ, З від 15 хв &nbsp; <i style="box-shadow:inset 0 0 0 2px #e0a43a"></i>розбіжність зі школою';body.appendChild(lg);
   if(d.anomalies.length){body.appendChild(el('h3','',`Варто перевірити (${d.anomalies.length})`));
     d.anomalies.slice(0,12).forEach(x=>body.appendChild(el('div','chk',x.kind==='N'?`${fmtDate(S.dates[x.di])} · ${actLabel(x.a)}: «${x.m}», але в школі відмічено Н`:`${fmtDate(S.dates[x.di])} · ${actLabel(x.a)}: «В», хоча в школі був(ла) — за правилами це ПЗ?`)));
     if(d.anomalies.length>12)body.appendChild(el('div','note',`…і ще ${d.anomalies.length-12} у повному звіті.`))}
