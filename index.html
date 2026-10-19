@@ -167,9 +167,11 @@
   <div class="tabs">
     <button class="tab on" data-tab="marks">Відмітки</button>
     <button class="tab" data-tab="cal" id="tabCal">Календар</button>
+    <button class="tab hidden" data-tab="prak" id="tabPrak">Практикум</button>
   </div>
   <section id="tab-marks"></section>
   <section id="tab-cal" class="hidden"></section>
+  <section id="tab-prak" class="hidden"></section>
 </div>
 <div id="card" class="sheet hidden"></div>
 <div id="toast" class="toast hidden"><span id="toastText"></span><button id="undoBtn">Скасувати</button></div>
@@ -268,9 +270,9 @@ async function loadData(){
   S.courses = [...seen.entries()].map(([name,n]) => ({name,n}));
   if (!S.courses.find(c => c.name === S.course)) S.course = S.courses[0]?.name || '';
 }
-async function writeCells(changes){
+async function writeCells(changes, sheet){
   await Excel.run(async ctx => {
-    const ws = ctx.workbook.worksheets.getItem(S.sheetName);
+    const ws = ctx.workbook.worksheets.getItem(sheet || S.sheetName);
     for (const ch of changes) ws.getRangeByIndexes(ch.row-1, FIRST_COL+ch.di, 1, 1).values = [[ch.value]];
     await ctx.sync();
   });
@@ -288,13 +290,14 @@ async function apply(changes, label){
   try{ await writeCells(eff); }
   catch(e){ showError('Не вдалося записати в таблицю: ' + (e.message || e)); return; }
   eff.forEach(ch => { S.rows.find(x => x.row === ch.row).marks[ch.di] = ch.value; });
-  S.undo = {prev}; render(); toast(label, true);
+  S.undo = {prev, sheet: S.sheetName}; render(); toast(label, true);
 }
 async function undo(){
   if (!S.undo) return;
   const u = S.undo; S.undo = null; $('toast').classList.add('hidden');
-  try{ await writeCells(u.prev); }catch(e){ showError('Не вдалося скасувати: ' + (e.message || e)); return; }
-  u.prev.forEach(ch => { S.rows.find(x => x.row === ch.row).marks[ch.di] = ch.value; });
+  try{ await writeCells(u.prev, u.sheet); }catch(e){ showError('Не вдалося скасувати: ' + (e.message || e)); return; }
+  const urows = u.sheet === PRAK_SHEET ? P.rows : S.rows;
+  u.prev.forEach(ch => { urows.find(x => x.row === ch.row).marks[ch.di] = ch.value; });
   render();
 }
 
@@ -363,10 +366,14 @@ function render(){
   $('app').classList.remove('hidden');
   const pc = S.courses.reduce((a,c) => a + pendingFor(c.name).length, 0);
   $('tabCal').innerHTML = 'Календар' + (pc ? `<span class="cnt">${pc}</span>` : '');
+  const showPrak = prakAllowed();
+  $('tabPrak').classList.toggle('hidden', !showPrak);
+  if (S.tab === 'prak' && !showPrak) S.tab = 'marks';
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === S.tab));
   $('tab-marks').classList.toggle('hidden', S.tab !== 'marks');
   $('tab-cal').classList.toggle('hidden', S.tab !== 'cal');
-  if (S.tab === 'marks') renderMarks(); else renderCal();
+  $('tab-prak').classList.toggle('hidden', S.tab !== 'prak');
+  if (S.tab === 'marks') renderMarks(); else if (S.tab === 'cal') renderCal(); else renderPrak();
   if (S.card) renderCard();
 }
 
@@ -532,6 +539,204 @@ function clearDay(){
   apply(rows.map(r => ({row:r.row, di:S.di, value:''})), `Очищено ${fmtDate(S.dates[S.di])}`);
 }
 
+/* ---------- практикуми (вкладка лише для вчителів зі списку) ---------- */
+const PRAK_SHEET = 'Практикуми';
+// Хто бачить вкладку «Практикум». Імена мають збігатися з A1 вчительських аркушів.
+// Щоб змінити список, відредагуйте цей масив у taskpane.html та index.html на GitHub.
+const PRAK_TEACHERS = [
+  'Бойко Євген', 'Савченко Володимир', 'Панасюк Юлія', 'Сокуренко Микола',   // математика
+  'Видренко Алевтина', 'Синьоок Тетяна', 'Шепілова Яна',                      // філологія
+  'Шелест Євгеній'                                                            // розробник (для перевірки; рядок можна прибрати)
+];
+const P = {loaded:false, dates:[], rows:[], di:0, pick:null, menu:false, showAll:false, lateOpen:null, okDays:new Set()};
+const normName = s => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+function prakAllowed(){
+  const me = S.sheetList.find(x => x.name === S.sheetName);
+  return !!me && PRAK_TEACHERS.some(n => normName(n) === normName(me.teacher));
+}
+const prakGroup = () => P.rows.filter(r => r.marks[P.di] !== '');
+function prakToday(){
+  const t = todayUTC(); let best = -1;
+  P.dates.forEach((d,i) => { if (d && d.getTime() <= t) best = i; });
+  return best >= 0 ? best : Math.max(0, P.dates.findIndex(Boolean));
+}
+function prakAdjacent(dir){
+  for (let i = P.di + dir; i >= 0 && i < P.dates.length; i += dir) if (P.dates[i]) return i;
+  return null;
+}
+function prakGo(i){ P.di = i; P.pick = null; P.menu = false; P.lateOpen = null; render(); }
+
+async function loadPrak(){
+  clearError();
+  const lastCol = FIRST_COL + N_DATES - 1;
+  const data = await Excel.run(async ctx => {
+    const ws = ctx.workbook.worksheets.getItemOrNullObject(PRAK_SHEET);
+    ws.load('isNullObject'); await ctx.sync();
+    if (ws.isNullObject) return null;
+    const rng = ws.getRangeByIndexes(DATE_ROW-1, 0, LAST_ROW-DATE_ROW+1, lastCol+1);
+    rng.load('values'); await ctx.sync(); return rng.values;
+  });
+  if (!data) throw new Error(`Не знайдено аркуш «${PRAK_SHEET}».`);
+  const head = data[0], prevDi = P.di, was = P.loaded;
+  P.dates = [];
+  for (let i = 0; i < N_DATES; i++){ const v = head[FIRST_COL+i]; P.dates.push(typeof v === 'number' ? serialToDate(v) : null); }
+  P.rows = [];
+  for (let r = 1; r < data.length; r++){
+    const student = String(data[r][1] ?? '').trim();
+    if (!student) continue;
+    P.rows.push({row: DATE_ROW + r, student, marks: data[r].slice(FIRST_COL, FIRST_COL+N_DATES).map(x => x === '' ? '' : String(x))});
+  }
+  P.di = (was && P.dates[prevDi]) ? prevDi : prakToday();
+  P.pick = null; P.menu = false; P.lateOpen = null;
+  P.loaded = true;
+}
+// свіжі відмітки одного дня (перед першим записом: інший вчитель міг уже внести групу)
+async function refreshPrakDay(di){
+  const vals = await Excel.run(async ctx => {
+    const rng = ctx.workbook.worksheets.getItem(PRAK_SHEET).getRangeByIndexes(DATE_ROW, FIRST_COL+di, LAST_ROW-DATE_ROW, 1);
+    rng.load('values'); await ctx.sync(); return rng.values;
+  });
+  P.rows.forEach(r => { const v = vals[r.row - DATE_ROW - 1]; if (v) r.marks[di] = v[0] === '' ? '' : String(v[0]); });
+}
+async function prakApply(changes, label, opts){
+  if (!changes.length) return;
+  const di = changes[0].di;
+  if (!P.okDays.has(di)){
+    try{ await refreshPrakDay(di); }catch(e){ /* працюємо з тим, що є */ }
+    const before = P.rows.filter(r => r.marks[di] !== '').length;
+    if (before > 0 && !(opts && opts.skipWarn) &&
+        !confirm(`На ${fmtDate(P.dates[di])} у «Практикумах» уже є відмітки (${before}). Можливо, їх вніс інший вчитель. Продовжити?`)){ render(); return; }
+  }
+  const eff = changes.filter(ch => { const r = P.rows.find(x => x.row === ch.row); return r && r.marks[ch.di] !== ch.value; });
+  if (!eff.length){ render(); return; }
+  const prev = eff.map(ch => ({row: ch.row, di: ch.di, value: P.rows.find(x => x.row === ch.row).marks[ch.di]}));
+  try{ await writeCells(eff, PRAK_SHEET); }
+  catch(e){ showError('Не вдалося записати в таблицю: ' + (e.message || e)); return; }
+  eff.forEach(ch => { P.rows.find(x => x.row === ch.row).marks[ch.di] = ch.value; });
+  P.okDays.add(di); S.undo = {prev, sheet: PRAK_SHEET}; render(); toast(label, true);
+}
+function prakSet(r, value){
+  P.lateOpen = null;
+  prakApply([{row: r.row, di: P.di, value}], value ? `${r.student}: ${value} (${fmtDate(P.dates[P.di])})` : `${r.student}: прибрано з групи`);
+}
+function prakCode(code){
+  const g = prakGroup();
+  if (!g.length){ toast('Спершу складіть групу дня', false); return; }
+  const n = g.filter(r => r.marks[P.di] !== code).length;
+  if (n && !confirm(`Позначити «${code}» усій групі дня (${g.length})? Поточні відмітки (${n}) буде замінено.`)) return;
+  prakApply(g.map(r => ({row: r.row, di: P.di, value: code})), `Практикум: ${code} (${fmtDate(P.dates[P.di])})`, {skipWarn: true});
+}
+function prakClear(){
+  const g = prakGroup(); if (!g.length) return;
+  if (!confirm(`Очистити відмітки практикуму за ${fmtDate(P.dates[P.di])} (${g.length})? Усіх буде прибрано з групи.`)) return;
+  prakApply(g.map(r => ({row: r.row, di: P.di, value: ''})), `Очищено практикум ${fmtDate(P.dates[P.di])}`, {skipWarn: true});
+}
+
+function renderPrak(){
+  const root = $('tab-prak'); root.innerHTML = '';
+  if (!P.loaded){ root.appendChild(el('div','note','Завантаження…')); return; }
+  const di = P.di, today = prakToday(), grp = prakGroup(), n = grp.length;
+
+  // 1. дата
+  const dr = el('div','dr');
+  const prev = el('button','nav','‹'); prev.title = 'Попередній день'; prev.disabled = prakAdjacent(-1) === null; prev.onclick = () => prakGo(prakAdjacent(-1));
+  const next = el('button','nav','›'); next.title = 'Наступний день'; next.disabled = prakAdjacent(1) === null; next.onclick = () => prakGo(prakAdjacent(1));
+  const ds = document.createElement('select');
+  P.dates.forEach((d,i) => {
+    if (!d) return;
+    const c = P.rows.filter(r => r.marks[i] !== '').length;
+    const o = el('option','', (i === today ? 'Сьогодні · ' : '') + fmtFull(d) + (c ? ` · ${c}` : '')); o.value = i; ds.appendChild(o);
+  });
+  ds.value = di; ds.onchange = () => prakGo(+ds.value);
+  dr.append(prev, ds, next); root.appendChild(dr);
+  if (di !== today && today >= 0){ const l = el('button','tolink','↩ До сьогодні'); l.onclick = () => prakGo(today); root.appendChild(l); }
+
+  // 2. стан дня
+  root.appendChild(el('div','hint', n ? `У групі практикуму: ${n} з ${P.rows.length}` : 'На цю дату групу ще не складено'));
+  if (n && !P.okDays.has(di)){
+    const a = el('div','alert'); a.style.cursor = 'default';
+    a.appendChild(el('span','','На цю дату в «Практикумах» уже є відмітки. Переконайтеся, що змінюєте свій практикум.'));
+    root.appendChild(a);
+  }
+
+  // 3. дії
+  const act = el('div','actions');
+  if (P.pick){
+    const k = P.pick.set.size, isGroup = P.pick.value === 'П';
+    act.appendChild(el('span','meta', k ? `Обрано: ${k}` : (isGroup ? 'Позначте тих, хто має бути на практикумі' : 'Позначте учнів, які були на заході')));
+    const go = el('button','btn prim', isGroup ? 'Додати до групи' : 'Поставити БЗ'); go.disabled = !k;
+    go.onclick = () => {
+      const v = P.pick.value, ch = P.rows.filter(r => P.pick.set.has(r.row)).map(r => ({row: r.row, di, value: v}));
+      P.pick = null;
+      prakApply(ch, isGroup ? `У групу додано: ${ch.length} (${fmtDate(P.dates[di])})` : `БЗ: ${ch.length} (${fmtDate(P.dates[di])})`);
+    };
+    const cn = el('button','ib','Скасувати'); cn.onclick = () => { P.pick = null; render(); };
+    act.append(go, cn);
+  } else {
+    act.appendChild(el('span','meta', `Група: ${n}`));
+    const mk = el('button','btn prim', n ? 'Додати учнів' : 'Скласти групу'); mk.onclick = () => { P.pick = {value:'П', set:new Set()}; P.menu = false; render(); };
+    const more = el('button','ib','⋯'); more.title = 'Інші дії'; more.onclick = e => { e.stopPropagation(); P.menu = !P.menu; render(); };
+    act.append(mk, more);
+    if (P.menu){
+      const m = el('div','menu'); m.appendChild(el('div','lbl','Практикум не відбувся (уся група дня):'));
+      CODE_MENU.forEach(([code, label]) => { const b = el('button','', `${code} · ${label}`); b.onclick = () => { P.menu = false; prakCode(code); }; m.appendChild(b); });
+      const pk = el('button','','БЗ лише для частини учнів…'); pk.onclick = () => { P.menu = false; P.pick = {value:'БЗ', set:new Set()}; render(); };
+      m.insertBefore(pk, m.children[1]);
+      m.appendChild(document.createElement('hr'));
+      const clr = el('button','','Очистити відмітки цього дня'); clr.onclick = () => { P.menu = false; prakClear(); }; m.appendChild(clr);
+      act.appendChild(m);
+    }
+  }
+  root.appendChild(act);
+  if (!P.pick && n){
+    const tg = el('button','tolink', P.showAll ? 'Лише група дня' : 'Показати всіх учнів'); tg.onclick = () => { P.showAll = !P.showAll; render(); }; root.appendChild(tg);
+  }
+
+  // 4. таблиця
+  const list = (P.pick || P.showAll || n === 0) ? P.rows : grp;
+  if (!list.length){ root.appendChild(el('div','note','На аркуші «Практикуми» не знайдено учнів.')); return; }
+  const tbl = el('table','grid');
+  tbl.innerHTML = '<thead><tr><th class="n">№</th><th class="stu-h">Учень</th><th class="mk">П</th><th class="mk">З</th><th class="mk">В</th><th class="mk">ПЗ</th></tr></thead>';
+  const tb = document.createElement('tbody');
+  list.forEach((r, idx) => {
+    const v = r.marks[di], tr = document.createElement('tr');
+    tr.appendChild(el('td','n', idx+1));
+    const nmc = el('td','name'), nm = el('span','', r.student); nm.style.cssText = 'font-weight:600;display:block';
+    nmc.appendChild(nm); tr.appendChild(nmc);
+    const cell = (label, cls, on, h, title) => { const td = el('td','mk'), b = el('button','cell ' + cls + (on ? ' on' : ''), label); b.title = title; b.onclick = h; td.appendChild(b); return td; };
+    if (P.pick){
+      const forGroup = P.pick.value === 'П', selectable = forGroup ? v === '' : !isCode(v);
+      const td = el('td'); td.colSpan = 4;
+      if (selectable){
+        const on = P.pick.set.has(r.row);
+        const b = el('button','cell code' + (on ? ' cBZ' : ''), on ? (forGroup ? '☑ у групу' : '☑ БЗ') : '☐');
+        b.onclick = () => { on ? P.pick.set.delete(r.row) : P.pick.set.add(r.row); render(); }; td.appendChild(b);
+      } else {
+        const b = el('div','cell code cS', isCode(v) ? `${v} · ${CODE_NAME[v]}` : `${v} · уже в групі`);
+        b.style.cssText = 'display:flex;align-items:center;justify-content:center'; td.appendChild(b);
+      }
+      tr.appendChild(td);
+    } else if (isCode(v)){
+      const td = el('td'); td.colSpan = 4; const b = el('button','cell code ' + CODE_CLASS[v], `${v} · ${CODE_NAME[v]}`);
+      b.title = 'Натисніть, щоб зняти'; b.onclick = () => prakSet(r, ''); td.appendChild(b); tr.appendChild(td);
+    } else {
+      tr.appendChild(cell(v==='П' ? 'П' : '', 'P', v==='П', () => prakSet(r, v==='П' ? '' : 'П'), 'Присутній'));
+      tr.appendChild(cell(isLate(v) ? v.slice(1) : '', 'Z', isLate(v), () => { P.lateOpen = P.lateOpen === r.row ? null : r.row; render(); }, 'Запізнився'));
+      tr.appendChild(cell(v==='В' ? 'В' : '', 'V', v==='В', () => prakSet(r, v==='В' ? '' : 'В'), 'Відсутній'));
+      tr.appendChild(cell(v==='ПЗ' ? 'ПЗ' : '', 'PZ', v==='ПЗ', () => prakSet(r, v==='ПЗ' ? '' : 'ПЗ'), 'У школі, але пропустив практикум'));
+    }
+    tb.appendChild(tr);
+    if (!P.pick && P.lateOpen === r.row){
+      const t2 = el('tr','minsrow'), td = el('td'); td.colSpan = 6; const m = el('div','mins');
+      LATE.forEach(code => { const c = el('button','chip' + (v===code ? ' sel' : ''), code.slice(1) + ' хв'); c.onclick = () => { P.lateOpen = null; prakSet(r, code); }; m.appendChild(c); });
+      if (isLate(v)){ const x = el('button','chip off','зняти'); x.onclick = () => { P.lateOpen = null; prakSet(r, ''); }; m.appendChild(x); }
+      td.appendChild(m); t2.appendChild(td); tb.appendChild(t2);
+    }
+  });
+  tbl.appendChild(tb); root.appendChild(tbl);
+  root.appendChild(el('div','leg','Відмічайте лише тих, хто мав бути на практикумі: порожня клітинка в таблиці означає «не в групі». Натисніть на відмітку ще раз, щоб зняти її (учня буде прибрано з групи дня). Групу можна скласти кнопкою «Скласти групу», усім буде поставлено «П», а винятки виправляються окремо.'));
+}
+
 /* ---------- картка учня ---------- */
 function renderCard(){
   const r = S.card, box = $('card'); box.innerHTML = ''; box.classList.remove('hidden');
@@ -657,7 +862,7 @@ function renderSettings(){
   help.innerHTML = '<b>П</b> — присутній · <b>З</b> — запізнився (5, 10, 15, 20, 30+ хвилин) · <b>В</b> — відсутній · <b>ПЗ</b> — учень у школі, але пропустив заняття.<br>Заняття не відбулося для всього курсу: <b>Т</b> тривога, <b>ХВ</b> хвороба вчителя, <b>БЗ</b> захід Britannica, <b>С</b> скасовано. Такі дні не входять у відсоток відвідування.';
   box.appendChild(help);
 }
-async function refresh(){ try{ await loadData(); render(); toast('Дані оновлено', false); }catch(e){ showError(e.message || String(e)); } }
+async function refresh(){ try{ await loadData(); if (P.loaded) await loadPrak(); render(); toast('Дані оновлено', false); }catch(e){ showError(e.message || String(e)); } }
 
 /* ---------- перший запуск ---------- */
 function showPicker(list){
@@ -678,8 +883,18 @@ async function init(){
   $('btnMenu').onclick = () => { S.view = S.view === 'settings' ? 'main' : 'settings'; render(); };
   $('btnRefresh').onclick = refresh;
   $('undoBtn').onclick = undo;
-  document.querySelectorAll('.tab').forEach(t => t.onclick = () => { S.tab = t.dataset.tab; S.dayMenu = false; render(); });
-  document.addEventListener('click', () => { if (S.dayMenu){ S.dayMenu = false; if (S.view === 'main' && S.tab === 'marks') renderMarks(); } });
+  document.querySelectorAll('.tab').forEach(t => t.onclick = async () => {
+    S.tab = t.dataset.tab; S.dayMenu = false; P.menu = false;
+    if (S.tab === 'prak' && !P.loaded){
+      render();
+      try{ await loadPrak(); }catch(e){ showError(e.message || String(e)); S.tab = 'marks'; }
+    }
+    render();
+  });
+  document.addEventListener('click', () => {
+    if (S.dayMenu){ S.dayMenu = false; if (S.view === 'main' && S.tab === 'marks') renderMarks(); }
+    if (P.menu){ P.menu = false; if (S.view === 'main' && S.tab === 'prak') renderPrak(); }
+  });
   try{
     S.sheetList = await listTeacherSheets();
     const saved = store.get('att.sheet');
