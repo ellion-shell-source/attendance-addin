@@ -58,6 +58,9 @@
   .heat td.warn::after{content:'!';color:#b45309;font-size:9px;vertical-align:super;margin-left:1px}
   .heat th.badday{background:#fbe3e0;color:#8a1c1c}
   .heat th.warnday{background:#fdf0d5;color:#8a5a00}
+  .winbar{display:flex;gap:5px;align-items:center;margin:2px 0 4px}
+  .winbar input[type=range]{flex:1;min-width:0}
+  .winbar select{width:auto;padding:3px 4px;font-size:12px}
   .hleg{font-size:11px;color:var(--mute);margin:2px 0 6px}
   .hleg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:3px;vertical-align:-1px}
   table.mini{width:100%;border-collapse:collapse;font-size:12px}
@@ -83,7 +86,7 @@
 const LAST_ROW=204, DATE_ROW=4, FIRST_COL=2, N_DATES=55;
 const CODE_CLASS={'Т':'cT','ХВ':'cHV','БЗ':'cBZ','С':'cS'};
 const WD=['нд','пн','вт','ср','чт','пт','сб'];
-const S={T:null,loading:false,err:'',dates:[],serialIdx:new Map(),name:'',watch:[],stu:'',addOpen:false,addQ:'',view:'main',span:14,di:0};
+const S={win:10,pos:null,T:null,loading:false,err:'',dates:[],serialIdx:new Map(),name:'',watch:[],stu:'',addOpen:false,addQ:'',view:'main',span:14,di:0};
 const $=id=>document.getElementById(id);
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 const serialToDate=n=>new Date(Math.round((n-25569)*86400000));
@@ -108,7 +111,7 @@ async function copyText(text){
 function loadPrefs(){
   S.name=store.get('tut.name')||store.get('att.tutor')||'';
   try{S.watch=JSON.parse(store.get('tut.watch')||store.get('att.watch')||'[]')||[]}catch(e){S.watch=[]}
-  S.span=+(store.get('tut.span')||14)||14;
+  {const v=store.get('tut.span');S.span=v===null?14:(+v||0)}
 }
 const saveWatch=()=>store.set('tut.watch',JSON.stringify(S.watch));
 function addWatch(name){const key=nameKey(name);if(!S.watch.some(w=>w.key===key)){S.watch.push({key,name});saveWatch()}}
@@ -269,7 +272,7 @@ function renderList(body,tutees,per){
       if(d.sig.tags.length||d.anomalies.length)pill('sig','потребує уваги');
       else if(!d.sum.V&&!d.sum.Z&&!d.sum.PZ)pill('ok','без пропусків');
     }
-    c.onclick=()=>{S.stu=d.t.key;render()};body.appendChild(c);
+    c.onclick=()=>{S.stu=d.t.key;S.pos=null;render()};body.appendChild(c);
   });
   const cp=el('button','btn','Копіювати зведення');cp.onclick=()=>copyText(data.map(d=>{
     return `${d.t.name}: ${pctTxt(d.rate)} (П ${d.sum.P}, З ${d.sum.Z}, В ${d.sum.V}, ПЗ ${d.sum.PZ})`+(d.sig.tags.length?`; сигнали: ${d.sig.tags.join(', ')}`:'')+(d.anomalies.length?`; перевірити: ${d.anomalies.length}`:'')}).join('\n'));
@@ -296,8 +299,26 @@ function renderTutee(body,t,per){
     [['Є','P','був'],['Н','N','не було'],['О','Z','очікували пізніше']].forEach(([k,c,x])=>g.appendChild(el('span','pill '+c,`${x} ${d.pc[k]}`)));body.appendChild(g)}
   if(d.sig.msgs.length){const box=el('div','pend');box.appendChild(el('b','',`Сигнали (14 днів, усі заняття разом)`));
     const ul=el('ul');ul.style.cssText='margin:4px 0 0;padding-left:17px;font-size:12.5px';d.sig.msgs.forEach(m=>ul.appendChild(el('li','',m)));box.appendChild(ul);body.appendChild(box)}
-  const days=[];for(let i=S.di;i>=0&&days.length<10;i--)if(S.dates[i])days.unshift(i);
-  body.appendChild(el('h3','',`Останні дні: ${fmtDate(S.dates[days[0]])} – ${fmtDate(S.dates[days[days.length-1]])}`));
+  const valid=[];for(let i=0;i<=S.di;i++)if(S.dates[i])valid.push(i);
+  const all=S.span===0,W=all?Math.min(S.win,valid.length):Math.min(10,valid.length);
+  const minP=W-1,maxP=valid.length-1;
+  if(!all||S.pos===null||S.pos>maxP)S.pos=maxP;
+  S.pos=Math.max(minP,S.pos);
+  const days=valid.slice(S.pos-W+1,S.pos+1);
+  body.appendChild(el('h3','',(S.pos===maxP?'Останні дні: ':'Дні: ')+`${fmtDate(S.dates[days[0]])} – ${fmtDate(S.dates[days[days.length-1]])}`));
+  if(all){
+    const bar=el('div','winbar');
+    const go=p=>{S.pos=Math.max(minP,Math.min(maxP,p));render()};
+    const lb=el('button','ib','‹');lb.onclick=()=>go(S.pos-Math.max(1,W-1));
+    const rb=el('button','ib','›');rb.onclick=()=>go(S.pos+Math.max(1,W-1));
+    const sl=document.createElement('input');sl.type='range';sl.min=minP;sl.max=maxP;sl.value=S.pos;sl.disabled=maxP<=minP;lb.disabled=rb.disabled=maxP<=minP;
+    sl.oninput=()=>{S.pos=+sl.value;const h=body.querySelector('h3[data-win]');if(h)h.textContent=`Дні: ${fmtDate(S.dates[valid[S.pos-W+1]])} – ${fmtDate(S.dates[valid[S.pos]])}`};
+    sl.onchange=()=>go(+sl.value);
+    const ws=document.createElement('select');[10,15,20].forEach(n=>{const o=el('option','',n+' днів');o.value=n;ws.appendChild(o)});ws.value=S.win;
+    ws.onchange=()=>{S.win=+ws.value;render()};
+    bar.append(lb,sl,rb,ws);body.appendChild(bar);
+    body.lastChild.previousSibling&&body.lastChild.previousSibling.setAttribute&&body.lastChild.previousSibling.setAttribute('data-win','1');
+  }
   const flagOf=(a,i)=>{const m=a.marks[i];
     if(d.anomalies.some(x=>x.a===a&&x.di===i))return 'warn';
     if(m==='В'||m==='ПЗ'||m==='З15'||m==='З20'||m==='З30+')return 'bad';return ''};
