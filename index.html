@@ -120,6 +120,36 @@
   .legend{display:flex;gap:10px;font-size:11.5px;color:var(--mute);margin:8px 0 0;flex-wrap:wrap}
   .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 
+  /* статистика */
+  .stbar{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 6px}
+  .stbar select{flex:1;min-width:120px;padding:5px 6px;font-size:12.5px}
+  .sumline{display:flex;gap:5px;flex-wrap:wrap;margin:4px 0 8px;align-items:center}
+  .sumline .big{font-size:18px;font-weight:700;margin-right:4px}
+  .pill{border-radius:5px;padding:0 6px;font-size:11.5px;font-weight:600}
+  .pill.P{background:var(--p);color:var(--p-ink)}.pill.Z{background:var(--z);color:var(--z-ink)}
+  .pill.V{background:var(--v);color:var(--v-ink)}.pill.PZ{background:var(--pz);color:var(--pz-ink)}
+  .scroll{overflow-x:auto;border:1.5px solid var(--grid);border-radius:4px}
+  table.st{border-collapse:separate;border-spacing:0;font-size:11px;table-layout:fixed}
+  .st th,.st td{border-right:1px solid var(--grid);border-bottom:1px solid var(--grid);padding:0;text-align:center;height:24px;width:25px;min-width:25px;overflow:hidden}
+  .st th{background:var(--soft);color:var(--mute);font-weight:600;height:auto;padding:2px 0;line-height:1.1;position:relative}
+  .st th small{display:block;font-weight:400;font-size:9px}
+  .st th.mon{font-size:10px;text-align:left;padding-left:3px;color:var(--ink);background:#eceef1;white-space:nowrap}
+  .st .c1,.st .c2{position:sticky;background:#fff;z-index:2}
+  .st th.c1,.st th.c2{background:var(--soft);z-index:3}
+  .st .c1{left:0;width:104px;min-width:104px;text-align:left;padding:0 4px;white-space:nowrap;text-overflow:ellipsis;font-size:11.5px}
+  .st .c2{left:104px;width:36px;min-width:36px;font-weight:700;border-right:2px solid var(--grid)}
+  .st td.c1 button{border:0;background:none;padding:0;font-size:11.5px;font-weight:600;text-align:left;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .st td.mstart,.st th.mstart{border-left:2px solid var(--grid)}
+  .st td.P{background:var(--p);color:var(--p-ink)}.st td.Z{background:var(--z);color:var(--z-ink)}
+  .st td.V{background:var(--v);color:var(--v-ink)}.st td.PZ{background:var(--pz);color:var(--pz-ink)}
+  .st td.cT{background:var(--cT);color:var(--cT-ink)}.st td.cBZ{background:var(--cBZ);color:var(--cBZ-ink)}
+  .st td.cHV{background:var(--cHV);color:var(--cHV-ink)}.st td.cS{background:var(--cS);color:var(--cS-ink)}
+  .st td.bad{box-shadow:inset 0 0 0 2px #c0392b;font-weight:700}
+  .st td.warn{box-shadow:inset 0 0 0 2px #e0a43a;font-weight:700}
+  .st td.cnt{background:var(--soft);color:var(--ink)}
+  .st tr.foot td{background:var(--soft);font-size:10px;color:var(--mute);height:20px}
+  .st tr.foot td.c1,.st tr.foot td.c2{background:var(--soft)}
+  .st td.low{background:#fbe3e0;color:#8a1c1c;font-weight:700}
   /* картка учня */
   .sheet{position:fixed;left:6px;right:6px;bottom:6px;max-height:62vh;overflow:auto;background:#fff;border:1px solid var(--grid);border-radius:12px;box-shadow:0 -4px 18px #0003;padding:10px 12px;z-index:8}
   .sheet .h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
@@ -149,6 +179,10 @@
   .sr{display:flex;gap:6px;align-items:center;margin-bottom:4px;font-size:11.5px}
   .sr span{flex:1;min-width:0;line-height:1.2}
   .sr input{width:42%;font:inherit;border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+  .pbar{display:flex;gap:6px;align-items:center;margin-bottom:6px;font-size:12px}
+  .pbar select{flex:1;padding:4px 6px}
+  .newper{border-top:1px solid var(--line);margin-top:10px;padding-top:4px}
+  .newper input[type=date]{font:inherit;border:1px solid var(--line);border-radius:6px;padding:4px 6px}
   .brow{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 
   .toast{position:fixed;left:10px;right:10px;bottom:10px;background:#1f2328;color:#fff;border-radius:8px;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;z-index:9}
@@ -170,9 +204,11 @@
   <div class="tabs">
     <button class="tab on" data-tab="marks">Відмітки</button>
     <button class="tab" data-tab="cal" id="tabCal">Календар</button>
+    <button class="tab" data-tab="stats">Статистика</button>
   </div>
   <section id="tab-marks"></section>
   <section id="tab-cal" class="hidden"></section>
+  <section id="tab-stats" class="hidden"></section>
 </div>
 <div id="card" class="sheet hidden"></div>
 <div id="toast" class="toast hidden"><span id="toastText"></span><button id="undoBtn">Скасувати</button></div>
@@ -188,7 +224,7 @@ const WD = ['нд','пн','вт','ср','чт','пт','сб'];
 
 const S = {
   sheetName: null, sheetList: [], dates: [], rows: [], courses: [], di: 0, course: '', tab: 'marks',
-  undo: null, lateOpen: null, sched: {}, short: {}, card: null, sigOpen: false, dayMenu: false, pick: null, pres: null, serials: [], done: {}, doneOpen: false,
+  undo: null, lateOpen: null, sched: {}, short: {}, card: null, sigOpen: false, dayMenu: false, pick: null, pres: null, periods: [{from:'',sched:{}}], edP: 0, stat: {span:'all', sort:'name'}, serials: [], done: {}, doneOpen: false,
   view: 'main'                                   // main | settings | wizard | picker
 };
 const $ = id => document.getElementById(id);
@@ -212,20 +248,33 @@ const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls)
 
 /* ---------- збережені налаштування ---------- */
 function loadPrefs(){
-  try{ S.sched = JSON.parse(store.get('att.sched') || '{}') || {}; }catch(e){ S.sched = {}; }
+  let ok = false;
+  try{ const p = JSON.parse(store.get('att.periods') || 'null'); if (Array.isArray(p) && p.length && p[0].from === ''){ S.periods = p; ok = true; } }catch(e){}
+  if (!ok){
+    let old = {}; try{ old = JSON.parse(store.get('att.sched') || '{}') || {}; }catch(e){}
+    S.periods = [{from:'', sched: old}];
+  }
+  S.periods.sort((x,y) => x.from < y.from ? -1 : x.from > y.from ? 1 : 0);
   try{ S.short = JSON.parse(store.get('att.short') || '{}') || {}; }catch(e){ S.short = {}; }
   try{ S.done = JSON.parse(store.get('att.sigDone') || '{}') || {}; }catch(e){ S.done = {}; }
-  if (Object.keys(S.sched).length && !store.get('att.schedDone')) store.set('att.schedDone', '1');
+  if (S.periods.some(p => Object.keys(p.sched).length) && !store.get('att.schedDone')) store.set('att.schedDone', '1');
 }
-const saveSched = () => store.set('att.sched', JSON.stringify(S.sched));
+const saveSched = () => store.set('att.periods', JSON.stringify(S.periods));
 const saveDone = () => store.set('att.sigDone', JSON.stringify(S.done));
 const sigKey = r => `${S.sheetName}|${r.course}|${r.student}`;
 const saveShort = () => store.set('att.short', JSON.stringify(S.short));
-const hasSched = c => Array.isArray(S.sched[c]) && S.sched[c].length > 0;
-const anySched = () => S.courses.some(c => hasSched(c.name));
+const isoOf = d => d.toISOString().slice(0,10);
+function periodAt(di){                                   // індекс навчального періоду для дня di
+  const d = S.dates[di]; if (!d) return 0; const iso = isoOf(d); let k = 0;
+  S.periods.forEach((p,i) => { if (p.from <= iso) k = i; }); return k;
+}
+const schedAt = (c, di) => (S.periods[periodAt(di)].sched[c]) || [];
+const hasSched = (c, di) => schedAt(c, di).length > 0;
+const hasSchedEver = c => S.periods.some(p => (p.sched[c] || []).length > 0);
+const anySched = di => S.courses.some(c => hasSched(c.name, di));
 function isLessonDay(course, di){
   const d = S.dates[di]; if (!d) return false;
-  return !hasSched(course) || S.sched[course].includes(d.getUTCDay());
+  return !hasSched(course, di) || schedAt(course, di).includes(d.getUTCDay());
 }
 const wordsOf = n => n.replace(/[:,.()]/g,' ').split(/\s+/).filter(Boolean);
 function autoShort(course){
@@ -357,10 +406,10 @@ function courseSignals(){
 }
 function pendingFor(course){
   const rows = S.rows.filter(r => r.course === course);
-  if (!hasSched(course) || !rows.length) return [];
+  if (!rows.length) return [];
   const t = todayUTC(), out = [];
   S.dates.forEach((d,i) => {
-    if (!d || d.getTime() > t || !isLessonDay(course, i)) return;
+    if (!d || d.getTime() > t || !hasSched(course, i) || !isLessonDay(course, i)) return;
     const st = dayStatus(rows, i); if (st !== 'full') out.push({di:i, st});
   });
   return out;
@@ -371,8 +420,7 @@ function todayIdx(){
   return best >= 0 ? best : S.dates.findIndex(Boolean);
 }
 function adjacent(dir){
-  const only = hasSched(S.course);
-  for (let i = S.di + dir; i >= 0 && i < S.dates.length; i += dir) if (S.dates[i] && (!only || isLessonDay(S.course, i))) return i;
+  for (let i = S.di + dir; i >= 0 && i < S.dates.length; i += dir) if (S.dates[i] && isLessonDay(S.course, i)) return i;
   return null;
 }
 
@@ -391,7 +439,8 @@ function render(){
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === S.tab));
   $('tab-marks').classList.toggle('hidden', S.tab !== 'marks');
   $('tab-cal').classList.toggle('hidden', S.tab !== 'cal');
-  if (S.tab === 'marks') renderMarks(); else renderCal();
+  $('tab-stats').classList.toggle('hidden', S.tab !== 'stats');
+  if (S.tab === 'marks') renderMarks(); else if (S.tab === 'cal') renderCal(); else renderStats();
   if (S.card) renderCard();
 }
 
@@ -406,7 +455,7 @@ function renderMarks(){
   const ds = document.createElement('select');
   S.dates.forEach((d,i) => {
     if (!d) return;
-    const o = el('option','', (i === today ? 'Сьогодні · ' : '') + fmtFull(d) + (hasSched(S.course) && !isLessonDay(S.course,i) ? ' ·—' : ''));
+    const o = el('option','', (i === today ? 'Сьогодні · ' : '') + fmtFull(d) + (hasSched(S.course,i) && !isLessonDay(S.course,i) ? ' ·—' : ''));
     o.value = i; ds.appendChild(o);
   });
   ds.value = di; ds.onchange = () => goDay(+ds.value);
@@ -414,18 +463,18 @@ function renderMarks(){
   if (di !== today && today >= 0){ const l = el('button','tolink','↩ До сьогодні'); l.onclick = () => goDay(today); root.appendChild(l); }
 
   // 2. курси дня
-  if (!anySched()){
+  if (!anySched(di)){
     const cs = document.createElement('select');
     S.courses.forEach(c => { const o = el('option','',`${c.name} (${c.n})`); o.value = c.name; cs.appendChild(o); });
     cs.value = S.course; cs.onchange = () => { S.course = cs.value; S.lateOpen = null; store.set('att.course', S.course); render(); };
     root.appendChild(cs);
-    const h = el('div','hint', 'Вкажіть розклад, і тут з\'являться кнопки курсів цього дня. ');
+    const h = el('div','hint', (S.periods.length > 1 || anySched(todayIdx()) ? 'На цей день розклад не вказано. ' : 'Вкажіть розклад, і тут з\'являться кнопки курсів цього дня. '));
     const b = el('button','tolink','Вказати розклад'); b.style.padding = '0'; b.onclick = () => { S.view = 'wizard'; render(); };
     h.appendChild(b); root.appendChild(h);
   } else {
-    const todayC = S.courses.filter(c => hasSched(c.name) && isLessonDay(c.name, di));
-    const free = S.courses.filter(c => !hasSched(c.name));
-    const others = S.courses.filter(c => hasSched(c.name) && !isLessonDay(c.name, di));
+    const todayC = S.courses.filter(c => hasSched(c.name, di) && isLessonDay(c.name, di));
+    const free = S.courses.filter(c => !hasSched(c.name, di));
+    const others = S.courses.filter(c => hasSched(c.name, di) && !isLessonDay(c.name, di));
     root.appendChild(el('div','hint', todayC.length ? `У цей день за розкладом: ${todayC.length} ${plZan(todayC.length)}` : 'За розкладом у цей день занять немає'));
     const mk = (c, extra) => {
       const cr = S.rows.filter(r => r.course === c.name), st = dayStatus(cr, di), f = cr.filter(r => r.marks[di] !== '').length;
@@ -434,7 +483,7 @@ function renderMarks(){
       b.onclick = () => { S.course = c.name; S.lateOpen = null; S.sigOpen = false; store.set('att.course', S.course); render(); };
       return b;
     };
-    const chips = el('div','chips'); todayC.concat(free).forEach(c => chips.appendChild(mk(c, hasSched(c.name) ? '' : 'free'))); root.appendChild(chips);
+    const chips = el('div','chips'); todayC.concat(free).forEach(c => chips.appendChild(mk(c, hasSched(c.name, di) ? '' : 'free'))); root.appendChild(chips);
     if (others.length){
       const w = el('div','other'), sel = document.createElement('select');
       const first = el('option','','Інший курс…'); first.value = ''; sel.appendChild(first);
@@ -540,8 +589,8 @@ function renderMarks(){
 }
 function goDay(i){
   S.di = i; S.lateOpen = null; S.dayMenu = false; S.pick = null;
-  if (anySched()){
-    const day = S.courses.filter(c => hasSched(c.name) && isLessonDay(c.name, i));
+  if (anySched(i)){
+    const day = S.courses.filter(c => hasSched(c.name, i) && isLessonDay(c.name, i));
     if (day.length && !day.some(c => c.name === S.course)){
       const open = day.find(c => dayStatus(S.rows.filter(r => r.course === c.name), i) !== 'full');
       S.course = (open || day[0]).name; store.set('att.course', S.course);
@@ -588,10 +637,93 @@ function renderCard(){
   if (s.msgs.length){ box.appendChild(el('div','hint','Увага (14 днів до вибраної дати):')); const ul = el('ul'); ul.style.cssText = 'margin:0;padding-left:16px;font-size:12.5px'; s.msgs.forEach(m => ul.appendChild(el('li','',m))); box.appendChild(ul); }
 }
 
+/* ---------- статистика курсу ---------- */
+function statRange(){
+  const t = todayUTC(), sp = S.stat.span;
+  if (sp === 'period'){ const k = periodAt(todayIdx()), f = S.periods[k].from; return {from: f ? Date.parse(f) : null, to: t}; }
+  if (sp === '14') return {from: t - 13*86400000, to: t};
+  if (sp === '30') return {from: t - 29*86400000, to: t};
+  return {from: null, to: t};
+}
+function renderStats(){
+  const root = $('tab-stats'); root.innerHTML = '';
+  const bar = el('div','stbar');
+  const cs = document.createElement('select');
+  S.courses.forEach(c => { const o = el('option','',c.name); o.value = c.name; cs.appendChild(o); }); cs.value = S.course;
+  cs.onchange = () => { S.course = cs.value; store.set('att.course', S.course); render(); };
+  const sp = document.createElement('select');
+  [['all','Весь час'],['period','Поточний період'],['30','Останні 30 днів'],['14','Останні 14 днів']].forEach(([v,l]) => { const o = el('option','',l); o.value = v; sp.appendChild(o); });
+  sp.value = S.stat.span; sp.onchange = () => { S.stat.span = sp.value; render(); };
+  const so = document.createElement('select');
+  [['name','За алфавітом'],['rate','Спершу низький %'],['V','Спершу більше В']].forEach(([v,l]) => { const o = el('option','',l); o.value = v; so.appendChild(o); });
+  so.value = S.stat.sort; so.onchange = () => { S.stat.sort = so.value; render(); };
+  bar.append(cs); root.appendChild(bar);
+  const bar2 = el('div','stbar'); bar2.append(sp, so); root.appendChild(bar2);
+  const rows = courseRows(), rg = statRange();
+  const cols = [];
+  S.dates.forEach((d,i) => { if (!d) return; const ms = d.getTime(); if ((rg.from !== null && ms < rg.from) || ms > rg.to) return; if (rows.some(r => r.marks[i] !== '')) cols.push(i); });
+  if (!rows.length || !cols.length){ root.appendChild(el('div','note','За обраний період відміток по цьому курсу немає.')); return; }
+  const data = rows.map(r => {
+    const t = {P:0,Z:0,V:0,PZ:0,X:0};
+    cols.forEach(i => { const m = r.marks[i]; if (m === 'П') t.P++; else if (isLate(m)) t.Z++; else if (m === 'В') t.V++; else if (m === 'ПЗ') t.PZ++; else if (isCode(m)) t.X++; });
+    const tot = t.P+t.Z+t.V+t.PZ; return {r, t, tot, rate: tot ? Math.round((t.P+t.Z)/tot*100) : null};
+  });
+  const sum = {P:0,Z:0,V:0,PZ:0}; data.forEach(d => ['P','Z','V','PZ'].forEach(k => sum[k] += d.t[k]));
+  const gt = sum.P+sum.Z+sum.V+sum.PZ, grate = gt ? Math.round((sum.P+sum.Z)/gt*100) : null;
+  if (S.stat.sort === 'rate') data.sort((a,b) => (a.rate ?? 101) - (b.rate ?? 101) || a.r.student.localeCompare(b.r.student,'uk'));
+  else if (S.stat.sort === 'V') data.sort((a,b) => (b.t.V+b.t.PZ) - (a.t.V+a.t.PZ) || a.r.student.localeCompare(b.r.student,'uk'));
+  else data.sort((a,b) => a.r.student.localeCompare(b.r.student,'uk'));
+  const sl = el('div','sumline'); sl.appendChild(el('span','big', grate === null ? '—' : grate + '%'));
+  sl.append(el('span','pill P','П ' + sum.P), el('span','pill Z','З ' + sum.Z), el('span','pill V','В ' + sum.V), el('span','pill PZ','ПЗ ' + sum.PZ), el('span','note', `${cols.length} ${plZan(cols.length)}`));
+  root.appendChild(sl);
+
+  const wrap = el('div','scroll'), tbl = el('table','st');
+  const mon = ['січ','лют','бер','кві','тра','чер','лип','сер','вер','жов','лис','гру'];
+  let h1 = '<thead><tr><th class="c1"></th><th class="c2"></th>', h2 = '<tr><th class="c1">Учень</th><th class="c2">%</th>', prevM = -1, spans = [];
+  cols.forEach((i,k) => { const m = S.dates[i].getUTCMonth(); if (m !== prevM){ spans.push({m, n:1, k}); prevM = m; } else spans[spans.length-1].n++; });
+  spans.forEach(sp => { h1 += `<th class="mon mstart" colspan="${sp.n}">${mon[sp.m]}</th>`; });
+  h1 += '<th class="mon" colspan="4"></th></tr>';
+  const starts = new Set(spans.map(x => x.k));
+  cols.forEach((i,k) => { const d = S.dates[i]; h2 += `<th class="${starts.has(k) ? 'mstart' : ''}" title="${fmtFull(d)}">${d.getUTCDate()}<small>${WD[d.getUTCDay()]}</small></th>`; });
+  h2 += '<th>П</th><th>З</th><th>В</th><th>ПЗ</th></tr></thead>';
+  tbl.innerHTML = h1 + h2;
+  const tb = document.createElement('tbody');
+  data.forEach(({r,t,rate}) => {
+    const tr = document.createElement('tr'), c1 = el('td','c1'), nb = el('button','',r.student); nb.title = r.student; nb.onclick = () => { S.card = r; render(); }; c1.appendChild(nb);
+    const c2 = el('td','c2' + (rate !== null && rate < 80 ? ' low' : ''), rate === null ? '—' : rate + '%'); tr.append(c1, c2);
+    cols.forEach((i,k) => {
+      const m = r.marks[i], td = el('td', starts.has(k) ? 'mstart' : '');
+      if (m){
+        const b = isLate(m) ? 'Z' : m === 'П' ? 'P' : m === 'В' ? 'V' : m === 'ПЗ' ? 'PZ' : '';
+        if (b){ td.classList.add(b); td.textContent = b === 'Z' ? m.slice(1) : m; } else if (isCode(m)){ td.classList.add(CODE_CLASS[m]); td.textContent = m; } else td.textContent = m;
+        const ps = presOf(r, i); let warn = false;
+        if (m === 'В' && ps === 'Є') warn = true;
+        if ((m === 'П' || m === 'ПЗ' || isLate(m)) && (ps === 'Н' || ps === 'ХВ')) warn = true;
+        if (warn){ td.classList.add('warn'); td.title = `${fmtFull(S.dates[i])}: ${m}, у школі: ${ps}`; }
+        else if (m === 'В' || m === 'ПЗ' || m === 'З15' || m === 'З20' || m === 'З30+') td.classList.add('bad');
+      }
+      tr.appendChild(td);
+    });
+    [t.P, t.Z, t.V, t.PZ].forEach(n => tr.appendChild(el('td','cnt', n || '')));
+    tb.appendChild(tr);
+  });
+  const ft = el('tr','foot'); ft.append(el('td','c1','Присутні'), el('td','c2',''));
+  cols.forEach((i,k) => { let ok = 0, all = 0; rows.forEach(r => { const m = r.marks[i]; if (m === 'П' || isLate(m)){ ok++; all++; } else if (m === 'В' || m === 'ПЗ') all++; });
+    const td = el('td', starts.has(k) ? 'mstart' : '', all ? ok + '/' + all : ''); td.title = all ? `${fmtFull(S.dates[i])}: ${Math.round(ok/all*100)}%` : ''; ft.appendChild(td); });
+  for (let k = 0; k < 4; k++) ft.appendChild(el('td','',''));
+  tb.appendChild(ft);
+  tbl.appendChild(tb); wrap.appendChild(tbl); root.appendChild(wrap);
+  setTimeout(() => { wrap.scrollLeft = wrap.scrollWidth; }, 0);
+  const lg = el('div','legend');
+  lg.innerHTML = '<span><i style="box-shadow:inset 0 0 0 2px #c0392b;background:#fff"></i>В, ПЗ, З від 15 хв</span><span><i style="box-shadow:inset 0 0 0 2px #e0a43a;background:#fff"></i>розбіжність зі «Сьогодні у школі»</span><span><i style="background:#fbe3e0"></i>% нижче 80</span>';
+  root.appendChild(lg);
+  root.appendChild(el('div','note','Показано лише дні, коли за курсом є відмітки. Гортайте таблицю вбік; ім\'я та % залишаються на місці. Натисніть на ім\'я, щоб відкрити картку учня.'));
+}
+
 /* ---------- календар ---------- */
 function renderCal(){
   const root = $('tab-cal'); root.innerHTML = '';
-  const withSched = S.courses.filter(c => hasSched(c.name));
+  const withSched = S.courses.filter(c => hasSchedEver(c.name));
   if (!withSched.length){
     root.appendChild(el('div','note','Календар покаже, де не внесено відвідування, коли ви вкажете розклад занять.'));
     const b = el('button','btn prim','Вказати розклад'); b.onclick = () => { S.view = 'wizard'; render(); }; root.appendChild(b); return;
@@ -611,7 +743,7 @@ function renderCal(){
   const strip = el('div','strip'), t = todayUTC();
   S.dates.forEach((d,i) => {
     if (!d) return;
-    const sch = withSched.filter(c => isLessonDay(c.name, i));
+    const sch = withSched.filter(c => hasSched(c.name, i) && isLessonDay(c.name, i));
     let cls = 'off', target = null;
     if (sch.length){
       const sts = sch.map(c => ({c, st: dayStatus(S.rows.filter(r => r.course === c.name), i)}));
@@ -630,32 +762,59 @@ function renderCal(){
 }
 
 /* ---------- розклад: спільний редактор ---------- */
+const perLabel = i => {
+  const p = S.periods[i], nx = S.periods[i+1];
+  const f = p.from ? 'з ' + p.from.slice(8) + '.' + p.from.slice(5,7) : 'з початку';
+  return nx ? `${f} до ${nx.from.slice(8)}.${nx.from.slice(5,7)}` : f + ' і далі';
+};
 function schedEditor(host){
   host.innerHTML = '';
+  if (S.edP >= S.periods.length) S.edP = S.periods.length - 1;
+  const P = S.periods[S.edP];
+  const bar = el('div','pbar'), ps = document.createElement('select');
+  S.periods.forEach((p,i) => { const o = el('option','',perLabel(i)); o.value = i; ps.appendChild(o); });
+  ps.value = S.edP; ps.onchange = () => { S.edP = +ps.value; schedEditor(host); };
+  bar.append(el('span','','Навчальний період:'), ps); host.appendChild(bar);
   const tbl = el('table','sched'); tbl.innerHTML = '<thead><tr><th>Курс</th><th>пн</th><th>вт</th><th>ср</th><th>чт</th><th>пт</th></tr></thead>';
   const tb = document.createElement('tbody');
   S.courses.forEach(c => {
     const tr = document.createElement('tr'); tr.appendChild(el('td','',c.name));
     [1,2,3,4,5].forEach(dow => {
-      const td = document.createElement('td'), cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = (S.sched[c.name] || []).includes(dow);
-      cb.onchange = () => { const set = new Set(S.sched[c.name] || []); cb.checked ? set.add(dow) : set.delete(dow); S.sched[c.name] = [...set].sort(); saveSched(); };
+      const td = document.createElement('td'), cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = (P.sched[c.name] || []).includes(dow);
+      cb.onchange = () => { const set = new Set(P.sched[c.name] || []); cb.checked ? set.add(dow) : set.delete(dow); P.sched[c.name] = [...set].sort(); saveSched(); };
       td.appendChild(cb); tr.appendChild(td);
     }); tb.appendChild(tr);
   });
   tbl.appendChild(tb); host.appendChild(tbl);
   const row = el('div','brow'), g = el('button','btn','Підказати з наявних відміток');
   g.onclick = () => {
+    const lo = P.from, hi = S.periods[S.edP+1] ? S.periods[S.edP+1].from : '9999';
     S.courses.forEach(c => {
-      const rows = S.rows.filter(r => r.course === c.name), by = {1:0,2:0,3:0,4:0,5:0};
-      S.dates.forEach((d,i) => { if (d && rows.some(r => r.marks[i] !== '')){ const w = d.getUTCDay(); if (by[w] !== undefined) by[w]++; } });
-      const days = Object.keys(by).filter(k => by[k] >= 2).map(Number); if (days.length) S.sched[c.name] = days;
+      const rows = S.rows.filter(r => r.course === c.name), by = {1:0,2:0,3:0,4:0,5:0}; let n = 0;
+      S.dates.forEach((d,i) => { if (d && isoOf(d) >= lo && isoOf(d) < hi && rows.some(r => r.marks[i] !== '')){ n++; const w = d.getUTCDay(); if (by[w] !== undefined) by[w]++; } });
+      const need = n > 6 ? 2 : 1, days = Object.keys(by).filter(k => by[k] >= need).map(Number); if (days.length) P.sched[c.name] = days;
     });
     saveSched(); schedEditor(host);
   };
   row.appendChild(g); host.appendChild(row);
-  host.appendChild(el('div','note','Підказка працює, коли вже є відмітки за кілька тижнів, тож перевірте результат. Розклад зберігається лише в цьому браузері й не змінює таблицю.'));
+  const nb = el('div','newper'); nb.appendChild(el('div','note','Розклад змінився? Додайте новий навчальний період: поточні відмітки старих періодів не зміняться, а календар не вважатиме пропущеним те, чого за новим розкладом не було.'));
+  const dr = document.createElement('input'); dr.type = 'date';
+  const t = new Date(); t.setDate(t.getDate() - ((t.getDay() + 6) % 7)); dr.value = t.getFullYear() + '-' + pad(t.getMonth()+1) + '-' + pad(t.getDate());
+  const add = el('button','btn','+ Новий період з цієї дати');
+  add.onclick = () => {
+    const iso = dr.value; if (!iso) return;
+    if (S.periods.some(p => p.from === iso)){ toast('Період з такою датою вже є', false); return; }
+    const prev = S.periods.filter(p => p.from < iso).pop() || S.periods[0];
+    S.periods.push({from: iso, sched: JSON.parse(JSON.stringify(prev.sched))});
+    S.periods.sort((x,y) => x.from < y.from ? -1 : 1); S.edP = S.periods.findIndex(p => p.from === iso); saveSched(); schedEditor(host);
+  };
+  const r2 = el('div','brow'); r2.append(dr, add); nb.appendChild(r2);
+  if (S.edP > 0){ const del = el('button','btn','Видалити цей період'); del.onclick = () => { if (!confirm(`Видалити період «${perLabel(S.edP)}»?`)) return; S.periods.splice(S.edP,1); S.edP = Math.max(0,S.edP-1); saveSched(); schedEditor(host); }; nb.appendChild(del); }
+  host.appendChild(nb);
+  host.appendChild(el('div','note','Нові курси та зміни дня тижня позначайте в потрібному періоді. Розклад зберігається лише в цьому браузері й не змінює таблицю.'));
 }
 function renderWizard(){
+  S.edP = periodAt(todayIdx());
   const box = $('wizard'); box.innerHTML = '';
   box.appendChild(el('h2','','Розклад занять'));
   box.appendChild(el('div','note','Позначте дні, коли у вас є кожен курс. Тоді вгорі з\'являтимуться кнопки курсів цього дня, а календар покаже, де ще не внесено відвідування. Це можна змінити пізніше в «⋯».'));
@@ -676,6 +835,7 @@ function renderSettings(){
   sel.value = S.sheetName;
   sel.onchange = async () => { S.sheetName = sel.value; store.set('att.sheet', S.sheetName); try{ await loadData(); S.di = todayIdx(); render(); }catch(e){ showError(e.message || String(e)); } };
   box.appendChild(sel);
+  S.edP = periodAt(todayIdx());
   box.appendChild(el('h4','','Розклад занять'));
   const host = el('div'); box.appendChild(host); schedEditor(host);
   box.appendChild(el('h4','','Короткі назви курсів (для кнопок)'));
