@@ -84,6 +84,9 @@
   .grid td.name{padding:2px 6px;line-height:1.2}
   .nm{font-weight:600;background:none;border:0;padding:0;text-align:left;font-size:13px;display:block;width:100%}
   .nm:hover{text-decoration:underline}
+  td.na{background:repeating-linear-gradient(45deg,#fafafa,#fafafa 6px,#f1f2f4 6px,#f1f2f4 12px);color:var(--mute);font-size:11px;text-align:center}
+  .jn{margin:8px 0 2px;padding-top:6px;border-top:1px solid var(--line);font-size:12px}
+  .jn input[type=date]{font:inherit;border:1px solid var(--line);border-radius:6px;padding:3px 5px}
   .ps{display:block;font-size:10.5px;line-height:1.2;color:var(--mute);margin-top:1px}
   .ps.in{color:#2f7d4f}.ps.out{color:#b3261e}.ps.late{color:#8a5a00}
   .ps.warn{color:#8a5a00;font-weight:600}
@@ -146,6 +149,7 @@
   .st td.cHV{background:var(--cHV);color:var(--cHV-ink)}.st td.cS{background:var(--cS);color:var(--cS-ink)}
   .st td.bad{box-shadow:inset 0 0 0 2px #c0392b;font-weight:700}
   .st td.warn{box-shadow:inset 0 0 0 2px #e0a43a;font-weight:700}
+  .st td.na{background:#f1f2f4;color:#b0b6bf}
   .st td.cnt{background:var(--soft);color:var(--ink)}
   .st tr.foot td{background:var(--soft);font-size:10px;color:var(--mute);height:20px}
   .st tr.foot td.c1,.st tr.foot td.c2{background:var(--soft)}
@@ -224,7 +228,7 @@ const WD = ['нд','пн','вт','ср','чт','пт','сб'];
 
 const S = {
   sheetName: null, sheetList: [], dates: [], rows: [], courses: [], di: 0, course: '', tab: 'marks',
-  undo: null, lateOpen: null, sched: {}, short: {}, card: null, sigOpen: false, dayMenu: false, pick: null, pres: null, periods: [{from:'',sched:{}}], edP: 0, stat: {span:'all', sort:'name'}, serials: [], done: {}, doneOpen: false,
+  undo: null, lateOpen: null, sched: {}, short: {}, card: null, sigOpen: false, dayMenu: false, pick: null, pres: null, joined: {}, periods: [{from:'',sched:{}}], edP: 0, stat: {span:'all', sort:'name'}, serials: [], done: {}, doneOpen: false,
   view: 'main'                                   // main | settings | wizard | picker
 };
 const $ = id => document.getElementById(id);
@@ -255,10 +259,15 @@ function loadPrefs(){
     S.periods = [{from:'', sched: old}];
   }
   S.periods.sort((x,y) => x.from < y.from ? -1 : x.from > y.from ? 1 : 0);
+  try{ S.joined = JSON.parse(store.get('att.joined') || '{}') || {}; }catch(e){ S.joined = {}; }
   try{ S.short = JSON.parse(store.get('att.short') || '{}') || {}; }catch(e){ S.short = {}; }
   try{ S.done = JSON.parse(store.get('att.sigDone') || '{}') || {}; }catch(e){ S.done = {}; }
   if (S.periods.some(p => Object.keys(p.sched).length) && !store.get('att.schedDone')) store.set('att.schedDone', '1');
 }
+const saveJoined = () => store.set('att.joined', JSON.stringify(S.joined));
+const nameKey = s => String(s ?? '').trim().replace(/\s+/g,' ').toLowerCase().split(' ').sort().join(' ');
+const joinedMs = r => { const j = S.joined[nameKey(r.student)]; return j ? Date.parse(j.from) : null; };
+const isIn = (r, di) => { const j = joinedMs(r); return j === null || (S.dates[di] && S.dates[di].getTime() >= j); };
 const saveSched = () => store.set('att.periods', JSON.stringify(S.periods));
 const saveDone = () => store.set('att.sigDone', JSON.stringify(S.done));
 const sigKey = r => `${S.sheetName}|${r.course}|${r.student}`;
@@ -271,7 +280,8 @@ function periodAt(di){                                   // індекс нав�
 const schedAt = (c, di) => (S.periods[periodAt(di)].sched[c]) || [];
 const hasSched = (c, di) => schedAt(c, di).length > 0;
 const hasSchedEver = c => S.periods.some(p => (p.sched[c] || []).length > 0);
-const anySched = di => S.courses.some(c => hasSched(c.name, di));
+const isOff = (c, di) => !!((S.periods[periodAt(di)].off || {})[c]);
+const anySched = di => S.courses.some(c => !isOff(c.name, di) && hasSched(c.name, di));
 function isLessonDay(course, di){
   const d = S.dates[di]; if (!d) return false;
   return !hasSched(course, di) || schedAt(course, di).includes(d.getUTCDay());
@@ -322,7 +332,6 @@ async function loadData(){
   if (!S.courses.find(c => c.name === S.course)) S.course = S.courses[0]?.name || '';
   await loadPresence();
 }
-const nameKey = s => String(s ?? '').trim().replace(/\s+/g,' ').toLowerCase().split(' ').sort().join(' ');
 async function loadPresence(){
   S.pres = null;
   try{
@@ -374,11 +383,12 @@ async function undo(){
 
 /* ---------- обчислення ---------- */
 const courseRows = () => S.rows.filter(r => r.course === S.course);
-function tallyMarks(marks, from, to){
+function tallyMarks(marks, from, to, jms){
   const t = {P:0,Z:0,V:0,PZ:0,X:0, lateDates:[], vDates:[], pzDates:[], lastInc:0};
   S.dates.forEach((d,i) => {
     if (!d) return; const ms = d.getTime();
     if ((from !== null && ms < from) || (to !== null && ms > to)) return;
+    if (jms && ms < jms) return;
     const m = marks[i];
     if ((m === 'В' || m === 'ПЗ' || isLate(m)) && ms > t.lastInc) t.lastInc = ms;
     if (m === 'П') t.P++; else if (isLate(m)){ t.Z++; t.lateDates.push([d,m]); }
@@ -389,6 +399,7 @@ function tallyMarks(marks, from, to){
   return t;
 }
 function dayStatus(rows, di){
+  rows = rows.filter(r => isIn(r, di)); if (!rows.length) return 'full';
   const f = rows.filter(r => r.marks[di] !== '').length;
   return f === 0 ? 'empty' : f === rows.length ? 'full' : 'part';
 }
@@ -401,7 +412,7 @@ function sigMsgs(z, v, pz){
 }
 function courseSignals(){
   const end = S.dates[S.di].getTime(), st = end - 13*86400000, out = [];
-  courseRows().forEach(r => { const t = tallyMarks(r.marks, st, end); const s = sigMsgs(t.Z, t.V, t.PZ); if (s.msgs.length) out.push({r, ...s, last: t.lastInc, done: (S.done[sigKey(r)] || 0) >= t.lastInc}); });
+  courseRows().forEach(r => { const t = tallyMarks(r.marks, st, end, joinedMs(r)); const s = sigMsgs(t.Z, t.V, t.PZ); if (s.msgs.length) out.push({r, ...s, last: t.lastInc, done: (S.done[sigKey(r)] || 0) >= t.lastInc}); });
   return out.sort((a,b) => b.w - a.w);
 }
 function pendingFor(course){
@@ -409,7 +420,7 @@ function pendingFor(course){
   if (!rows.length) return [];
   const t = todayUTC(), out = [];
   S.dates.forEach((d,i) => {
-    if (!d || d.getTime() > t || !hasSched(course, i) || !isLessonDay(course, i)) return;
+    if (!d || d.getTime() > t || isOff(course, i) || !hasSched(course, i) || !isLessonDay(course, i)) return;
     const st = dayStatus(rows, i); if (st !== 'full') out.push({di:i, st});
   });
   return out;
@@ -447,6 +458,7 @@ function render(){
 function renderMarks(){
   const root = $('tab-marks'); root.innerHTML = '';
   const rows = courseRows(), di = S.di, today = todayIdx();
+  const aRows = rows.filter(r => isIn(r, di));
 
   // 1. дата
   const dr = el('div','dr');
@@ -472,23 +484,25 @@ function renderMarks(){
     const b = el('button','tolink','Вказати розклад'); b.style.padding = '0'; b.onclick = () => { S.view = 'wizard'; render(); };
     h.appendChild(b); root.appendChild(h);
   } else {
-    const todayC = S.courses.filter(c => hasSched(c.name, di) && isLessonDay(c.name, di));
-    const free = S.courses.filter(c => !hasSched(c.name, di));
-    const others = S.courses.filter(c => hasSched(c.name, di) && !isLessonDay(c.name, di));
+    const live = S.courses.filter(c => !isOff(c.name, di)), ended = S.courses.filter(c => isOff(c.name, di));
+    const todayC = live.filter(c => hasSched(c.name, di) && isLessonDay(c.name, di));
+    const free = live.filter(c => !hasSched(c.name, di));
+    const others = live.filter(c => hasSched(c.name, di) && !isLessonDay(c.name, di));
     root.appendChild(el('div','hint', todayC.length ? `У цей день за розкладом: ${todayC.length} ${plZan(todayC.length)}` : 'За розкладом у цей день занять немає'));
     const mk = (c, extra) => {
-      const cr = S.rows.filter(r => r.course === c.name), st = dayStatus(cr, di), f = cr.filter(r => r.marks[di] !== '').length;
+      const cr = S.rows.filter(r => r.course === c.name && isIn(r, di)), st = dayStatus(cr, di), f = cr.filter(r => r.marks[di] !== '').length;
       const b = el('button','dchip' + (extra ? ' '+extra : '') + (st === 'full' ? ' full' : st === 'part' ? ' part' : '') + (c.name === S.course ? ' on' : ''));
       b.append(shortName(c.name), el('small','',`${f}/${cr.length}`)); b.title = c.name;
       b.onclick = () => { S.course = c.name; S.lateOpen = null; S.sigOpen = false; store.set('att.course', S.course); render(); };
       return b;
     };
     const chips = el('div','chips'); todayC.concat(free).forEach(c => chips.appendChild(mk(c, hasSched(c.name, di) ? '' : 'free'))); root.appendChild(chips);
-    if (others.length){
+    if (others.length || ended.length){
       const w = el('div','other'), sel = document.createElement('select');
       const first = el('option','','Інший курс…'); first.value = ''; sel.appendChild(first);
       others.forEach(c => { const o = el('option','',c.name); o.value = c.name; sel.appendChild(o); });
-      const inOthers = others.some(c => c.name === S.course); sel.value = inOthers ? S.course : ''; if (inOthers) sel.classList.add('on');
+      if (ended.length){ const g = document.createElement('optgroup'); g.label = 'Завершені в цьому періоді'; ended.forEach(c => { const o = el('option','',c.name); o.value = c.name; g.appendChild(o); }); sel.appendChild(g); }
+      const inOthers = others.concat(ended).some(c => c.name === S.course); sel.value = inOthers ? S.course : ''; if (inOthers) sel.classList.add('on');
       sel.onchange = () => { if (!sel.value) return; S.course = sel.value; S.lateOpen = null; store.set('att.course', S.course); render(); };
       w.appendChild(sel); root.appendChild(w);
     }
@@ -496,19 +510,19 @@ function renderMarks(){
 
   // 3. прогрес і дії
   if (S.pick && (S.pick.di !== di || S.pick.course !== S.course)) S.pick = null;
-  const filled = rows.filter(r => r.marks[di] !== '').length;
+  const filled = aRows.filter(r => r.marks[di] !== '').length;
   const act = el('div','actions');
   if (S.pick){
     const n = S.pick.set.size;
     act.appendChild(el('span','meta', n ? `Обрано: ${n}` : 'Позначте учнів, які були на заході'));
     const go = el('button','btn prim','Поставити БЗ'); go.disabled = !n;
-    go.onclick = () => { const ch = rows.filter(r => S.pick.set.has(r.row)).map(r => ({row:r.row, di, value:'БЗ'})); S.pick = null; apply(ch, `БЗ: ${ch.length} (${fmtDate(S.dates[di])})`); };
+    go.onclick = () => { const ch = aRows.filter(r => S.pick.set.has(r.row)).map(r => ({row:r.row, di, value:'БЗ'})); S.pick = null; apply(ch, `БЗ: ${ch.length} (${fmtDate(S.dates[di])})`); };
     const cn = el('button','ib','Скасувати'); cn.onclick = () => { S.pick = null; render(); };
     act.append(go, cn); root.appendChild(act);
   } else {
-  act.appendChild(el('span','meta', `Внесено ${filled} з ${rows.length}`));
-  const allP = el('button','btn prim','Усі присутні'); allP.title = 'Відмітити «П» усім, у кого ще порожньо'; allP.disabled = filled === rows.length;
-  allP.onclick = () => apply(rows.filter(r => r.marks[di] === '').map(r => ({row:r.row, di, value:'П'})), `Решту відмічено «П» (${fmtDate(S.dates[di])})`);
+  act.appendChild(el('span','meta', `Внесено ${filled} з ${aRows.length}`));
+  const allP = el('button','btn prim','Усі присутні'); allP.title = 'Відмітити «П» усім, у кого ще порожньо'; allP.disabled = filled === aRows.length;
+  allP.onclick = () => apply(aRows.filter(r => r.marks[di] === '').map(r => ({row:r.row, di, value:'П'})), `Решту відмічено «П» (${fmtDate(S.dates[di])})`);
   const more = el('button','ib','⋯'); more.title = 'Інші дії'; more.onclick = e => { e.stopPropagation(); S.dayMenu = !S.dayMenu; render(); };
   act.append(allP, more);
   if (S.dayMenu){
@@ -563,7 +577,9 @@ function renderMarks(){
     }
     tr.appendChild(tn);
     const cell = (label, cls, on, h, title) => { const td = el('td','mk'), b = el('button','cell ' + cls + (on ? ' on' : ''), label); b.title = title; b.onclick = h; td.appendChild(b); return td; };
-    if (S.pick && !isCode(v)){
+    if (!isIn(r, di)){
+      const td = el('td','na'); td.colSpan = 4; td.textContent = 'ще не на курсі'; td.title = 'Учень приєднався ' + S.joined[nameKey(r.student)].from.split('-').reverse().join('.'); tr.appendChild(td);
+    } else if (S.pick && !isCode(v)){
       const td = el('td'); td.colSpan = 4; const on = S.pick.set.has(r.row);
       const b = el('button','cell code' + (on ? ' cBZ' : ''), on ? '☑ БЗ' : '☐');
       b.onclick = () => { on ? S.pick.set.delete(r.row) : S.pick.set.add(r.row); render(); }; td.appendChild(b); tr.appendChild(td);
@@ -590,7 +606,7 @@ function renderMarks(){
 function goDay(i){
   S.di = i; S.lateOpen = null; S.dayMenu = false; S.pick = null;
   if (anySched(i)){
-    const day = S.courses.filter(c => hasSched(c.name, i) && isLessonDay(c.name, i));
+    const day = S.courses.filter(c => !isOff(c.name, i) && hasSched(c.name, i) && isLessonDay(c.name, i));
     if (day.length && !day.some(c => c.name === S.course)){
       const open = day.find(c => dayStatus(S.rows.filter(r => r.course === c.name), i) !== 'full');
       S.course = (open || day[0]).name; store.set('att.course', S.course);
@@ -604,12 +620,12 @@ function setMark(r, value){
   apply([{row:r.row, di:S.di, value}], value ? `${r.student}: ${value} (${fmtDate(S.dates[S.di])})` : `${r.student}: очищено`);
 }
 function setCourseCode(code){
-  const rows = courseRows(), had = rows.filter(r => r.marks[S.di] !== '' && r.marks[S.di] !== code).length;
+  const rows = courseRows().filter(r => isIn(r, S.di)), had = rows.filter(r => r.marks[S.di] !== '' && r.marks[S.di] !== code).length;
   if (had && !confirm(`У ${had} учнів на цю дату вже є відмітки. Замінити їх на «${code}» для всього курсу?`)) return;
   apply(rows.map(r => ({row:r.row, di:S.di, value:code})), `Курс: ${code} (${fmtDate(S.dates[S.di])})`);
 }
 function clearDay(){
-  const rows = courseRows().filter(r => r.marks[S.di] !== '');
+  const rows = courseRows().filter(r => isIn(r, S.di) && r.marks[S.di] !== '');
   if (!rows.length) return;
   if (!confirm(`Очистити відмітки за ${fmtDate(S.dates[S.di])} для всього курсу (${rows.length})?`)) return;
   apply(rows.map(r => ({row:r.row, di:S.di, value:''})), `Очищено ${fmtDate(S.dates[S.di])}`);
@@ -618,7 +634,7 @@ function clearDay(){
 /* ---------- картка учня ---------- */
 function renderCard(){
   const r = S.card, box = $('card'); box.innerHTML = ''; box.classList.remove('hidden');
-  const t = tallyMarks(r.marks, null, null);
+  const t = tallyMarks(r.marks, null, null, joinedMs(r));
   const h = el('div','h'), l = el('div'); l.append(el('b','',r.student)); const sub = el('div','note',r.course); sub.style.padding = '0'; l.appendChild(sub);
   const x = el('button','ib','✕'); x.onclick = () => { S.card = null; render(); };
   h.append(l, x); box.appendChild(h);
@@ -628,7 +644,15 @@ function renderCard(){
   const dl = (cls, label, items) => { if (!items.length) return; const d = el('div','dl'); d.appendChild(el('i',cls,label)); d.append(items.join(', ')); box.appendChild(d); };
   dl('V','В', t.vDates.map(fmtDate)); dl('PZ','ПЗ', t.pzDates.map(fmtDate)); dl('Z','З', t.lateDates.map(([d,m]) => `${fmtDate(d)} (${m.slice(1)} хв)`));
   if (!t.vDates.length && !t.pzDates.length && !t.lateDates.length) box.appendChild(el('div','note','Пропусків і запізнень немає.'));
-  const end = S.dates[S.di].getTime(), w = tallyMarks(r.marks, end - 13*86400000, end), s = sigMsgs(w.Z, w.V, w.PZ);
+  const end = S.dates[S.di].getTime(), w = tallyMarks(r.marks, end - 13*86400000, end, joinedMs(r)), s = sigMsgs(w.Z, w.V, w.PZ);
+  const jn = el('div','jn'), jk = nameKey(r.student), jv = S.joined[jk];
+  jn.appendChild(el('div','', 'Учень(ця) приєднався(лась) з:'));
+  const jd = document.createElement('input'); jd.type = 'date'; jd.value = jv ? jv.from : '';
+  jd.onchange = () => { if (jd.value) S.joined[jk] = {name: r.student, from: jd.value}; else delete S.joined[jk]; saveJoined(); render(); };
+  jn.appendChild(jd);
+  if (jv){ const cl = el('button','tolink','Скасувати'); cl.style.marginLeft = '6px'; cl.onclick = () => { delete S.joined[jk]; saveJoined(); render(); }; jn.appendChild(cl); }
+  jn.appendChild(el('div','note','Відмітки до цієї дати не враховуються в панелі. Таблицю це не змінює.'));
+  box.appendChild(jn);
   const ex = courseSignals().find(o => o.r === r);
   if (ex){
     const bt = el('button','btn', ex.done ? 'Сигнал опрацьовано · Повернути' : 'Опрацьовано ✓');
@@ -661,11 +685,11 @@ function renderStats(){
   const bar2 = el('div','stbar'); bar2.append(sp, so); root.appendChild(bar2);
   const rows = courseRows(), rg = statRange();
   const cols = [];
-  S.dates.forEach((d,i) => { if (!d) return; const ms = d.getTime(); if ((rg.from !== null && ms < rg.from) || ms > rg.to) return; if (rows.some(r => r.marks[i] !== '')) cols.push(i); });
+  S.dates.forEach((d,i) => { if (!d) return; const ms = d.getTime(); if ((rg.from !== null && ms < rg.from) || ms > rg.to) return; if (rows.some(r => isIn(r, i) && r.marks[i] !== '')) cols.push(i); });
   if (!rows.length || !cols.length){ root.appendChild(el('div','note','За обраний період відміток по цьому курсу немає.')); return; }
   const data = rows.map(r => {
     const t = {P:0,Z:0,V:0,PZ:0,X:0};
-    cols.forEach(i => { const m = r.marks[i]; if (m === 'П') t.P++; else if (isLate(m)) t.Z++; else if (m === 'В') t.V++; else if (m === 'ПЗ') t.PZ++; else if (isCode(m)) t.X++; });
+    cols.forEach(i => { if (!isIn(r, i)) return; const m = r.marks[i]; if (m === 'П') t.P++; else if (isLate(m)) t.Z++; else if (m === 'В') t.V++; else if (m === 'ПЗ') t.PZ++; else if (isCode(m)) t.X++; });
     const tot = t.P+t.Z+t.V+t.PZ; return {r, t, tot, rate: tot ? Math.round((t.P+t.Z)/tot*100) : null};
   });
   const sum = {P:0,Z:0,V:0,PZ:0}; data.forEach(d => ['P','Z','V','PZ'].forEach(k => sum[k] += d.t[k]));
@@ -693,7 +717,8 @@ function renderStats(){
     const c2 = el('td','c2' + (rate !== null && rate < 80 ? ' low' : ''), rate === null ? '—' : rate + '%'); tr.append(c1, c2);
     cols.forEach((i,k) => {
       const m = r.marks[i], td = el('td', starts.has(k) ? 'mstart' : '');
-      if (m){
+      if (!isIn(r, i)){ td.classList.add('na'); td.textContent = '·'; }
+      else if (m){
         const b = isLate(m) ? 'Z' : m === 'П' ? 'P' : m === 'В' ? 'V' : m === 'ПЗ' ? 'PZ' : '';
         if (b){ td.classList.add(b); td.textContent = b === 'Z' ? m.slice(1) : m; } else if (isCode(m)){ td.classList.add(CODE_CLASS[m]); td.textContent = m; } else td.textContent = m;
         const ps = presOf(r, i); let warn = false;
@@ -708,7 +733,7 @@ function renderStats(){
     tb.appendChild(tr);
   });
   const ft = el('tr','foot'); ft.append(el('td','c1','Присутні'), el('td','c2',''));
-  cols.forEach((i,k) => { let ok = 0, all = 0; rows.forEach(r => { const m = r.marks[i]; if (m === 'П' || isLate(m)){ ok++; all++; } else if (m === 'В' || m === 'ПЗ') all++; });
+  cols.forEach((i,k) => { let ok = 0, all = 0; rows.forEach(r => { if (!isIn(r, i)) return; const m = r.marks[i]; if (m === 'П' || isLate(m)){ ok++; all++; } else if (m === 'В' || m === 'ПЗ') all++; });
     const td = el('td', starts.has(k) ? 'mstart' : '', all ? ok + '/' + all : ''); td.title = all ? `${fmtFull(S.dates[i])}: ${Math.round(ok/all*100)}%` : ''; ft.appendChild(td); });
   for (let k = 0; k < 4; k++) ft.appendChild(el('td','',''));
   tb.appendChild(ft);
@@ -743,7 +768,7 @@ function renderCal(){
   const strip = el('div','strip'), t = todayUTC();
   S.dates.forEach((d,i) => {
     if (!d) return;
-    const sch = withSched.filter(c => hasSched(c.name, i) && isLessonDay(c.name, i));
+    const sch = withSched.filter(c => !isOff(c.name, i) && hasSched(c.name, i) && isLessonDay(c.name, i));
     let cls = 'off', target = null;
     if (sch.length){
       const sts = sch.map(c => ({c, st: dayStatus(S.rows.filter(r => r.course === c.name), i)}));
@@ -775,17 +800,25 @@ function schedEditor(host){
   S.periods.forEach((p,i) => { const o = el('option','',perLabel(i)); o.value = i; ps.appendChild(o); });
   ps.value = S.edP; ps.onchange = () => { S.edP = +ps.value; schedEditor(host); };
   bar.append(el('span','','Навчальний період:'), ps); host.appendChild(bar);
-  const tbl = el('table','sched'); tbl.innerHTML = '<thead><tr><th>Курс</th><th>пн</th><th>вт</th><th>ср</th><th>чт</th><th>пт</th></tr></thead>';
+  const tbl = el('table','sched'); tbl.innerHTML = '<thead><tr><th>Курс</th><th>пн</th><th>вт</th><th>ср</th><th>чт</th><th>пт</th><th title="Курс закінчився в цьому періоді">кін.</th></tr></thead>';
   const tb = document.createElement('tbody');
+  P.off = P.off || {};
   S.courses.forEach(c => {
-    const tr = document.createElement('tr'); tr.appendChild(el('td','',c.name));
+    const tr = document.createElement('tr'); tr.appendChild(el('td','',c.name)); if (P.off[c.name]) tr.style.opacity = '.5';
     [1,2,3,4,5].forEach(dow => {
       const td = document.createElement('td'), cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = (P.sched[c.name] || []).includes(dow);
       cb.onchange = () => { const set = new Set(P.sched[c.name] || []); cb.checked ? set.add(dow) : set.delete(dow); P.sched[c.name] = [...set].sort(); saveSched(); };
       td.appendChild(cb); tr.appendChild(td);
-    }); tb.appendChild(tr);
+    });
+    const tdo = document.createElement('td'), co = document.createElement('input'); co.type = 'checkbox'; co.checked = !!P.off[c.name]; co.title = 'Курс закінчився: не показувати в цьому періоді';
+    co.onchange = () => { if (co.checked) P.off[c.name] = true; else delete P.off[c.name]; saveSched(); schedEditor(host); };
+    tdo.appendChild(co); tr.appendChild(tdo); tb.appendChild(tr);
   });
   tbl.appendChild(tb); host.appendChild(tbl);
+  if (S.edP > 0){
+    const prev = S.periods[S.edP-1], cand = S.courses.filter(c => (prev.sched[c.name] || []).length && !(P.sched[c.name] || []).length && !P.off[c.name]);
+    if (cand.length){ const eb = el('button','btn',`Позначити завершеними курси без днів (${cand.length})`); eb.onclick = () => { cand.forEach(c => P.off[c.name] = true); saveSched(); schedEditor(host); }; const wr = el('div','brow'); wr.appendChild(eb); host.appendChild(wr); }
+  }
   const row = el('div','brow'), g = el('button','btn','Підказати з наявних відміток');
   g.onclick = () => {
     const lo = P.from, hi = S.periods[S.edP+1] ? S.periods[S.edP+1].from : '9999';
@@ -811,7 +844,7 @@ function schedEditor(host){
   const r2 = el('div','brow'); r2.append(dr, add); nb.appendChild(r2);
   if (S.edP > 0){ const del = el('button','btn','Видалити цей період'); del.onclick = () => { if (!confirm(`Видалити період «${perLabel(S.edP)}»?`)) return; S.periods.splice(S.edP,1); S.edP = Math.max(0,S.edP-1); saveSched(); schedEditor(host); }; nb.appendChild(del); }
   host.appendChild(nb);
-  host.appendChild(el('div','note','Нові курси та зміни дня тижня позначайте в потрібному періоді. Розклад зберігається лише в цьому браузері й не змінює таблицю.'));
+  host.appendChild(el('div','note','Позначка «кін.» ховає завершений курс з кнопок і календаря цього періоду (він лишається в «Інший курс…»). Нові курси та зміни дня тижня позначайте в потрібному періоді. Розклад зберігається лише в цьому браузері й не змінює таблицю.'));
 }
 function renderWizard(){
   S.edP = periodAt(todayIdx());
@@ -844,6 +877,11 @@ function renderSettings(){
     i.oninput = () => { if (i.value.trim()) S.short[c.name] = i.value; else delete S.short[c.name]; saveShort(); };
     r.append(el('span','',c.name), i); box.appendChild(r);
   });
+  const jl = Object.entries(S.joined);
+  if (jl.length){
+    box.appendChild(el('h4','','Учні з датою приєднання'));
+    jl.forEach(([k,v]) => { const r = el('div','sr'); r.append(el('span','', `${v.name} — з ${v.from.split('-').reverse().join('.')}`)); const x = el('button','ib','×'); x.onclick = () => { delete S.joined[k]; saveJoined(); renderSettings(); }; r.appendChild(x); box.appendChild(r); });
+  }
   const rd = el('button','btn','Показати всі опрацьовані сигнали знову'); rd.onclick = () => { S.done = {}; saveDone(); toast('Готово', false); }; box.appendChild(rd);
   const rf = el('button','btn','Оновити дані з таблиці'); rf.style.marginTop = '12px'; rf.onclick = refresh; box.appendChild(rf);
   box.appendChild(el('h4','','Що означають коди'));

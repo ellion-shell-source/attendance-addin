@@ -169,9 +169,9 @@ async function load(){
   S.loading=false;render();
 }
 /* ---- обчислення ---- */
-function tally(marks,from,to){
+function tally(marks,from,to,jms){
   const t={P:0,Z:0,V:0,PZ:0,X:0,lateDates:[],vDates:[],pzDates:[]};
-  S.dates.forEach((d,i)=>{if(!d)return;const ms=d.getTime();if((from!==null&&ms<from)||(to!==null&&ms>to))return;const m=marks[i];
+  S.dates.forEach((d,i)=>{if(!d)return;const ms=d.getTime();if((from!==null&&ms<from)||(to!==null&&ms>to))return;if(jms&&ms<jms)return;const m=marks[i];
     if(m==='П')t.P++;else if(isLate(m)){t.Z++;t.lateDates.push([d,m])}else if(m==='В'){t.V++;t.vDates.push(d)}else if(m==='ПЗ'){t.PZ++;t.pzDates.push(d)}else if(isCode(m))t.X++});
   t.total=t.P+t.Z+t.V+t.PZ;t.rate=t.total?Math.round((t.P+t.Z)/t.total*100):null;return t;
 }
@@ -193,13 +193,14 @@ function myTutees(){
   S.watch.forEach(w=>{if(!seen.has(w.key)){seen.add(w.key);out.push({name:w.name,key:w.key,manual:true})}});
   return out;
 }
+function joinedOf(key){try{const j=JSON.parse(localStorage.getItem('att.joined')||'{}')[key];return j?Date.parse(j.from):null}catch(e){return null}}
 function tutData(t,per){
   const acts=S.T.acts.filter(a=>a.key===t.key);
-  const rows=acts.map(a=>({a,t:tally(a.marks,per.from,per.to)}));
+  const jm=joinedOf(t.key);const rows=acts.map(a=>({a,t:tally(a.marks,per.from,per.to,jm)}));
   const sum={P:0,Z:0,V:0,PZ:0,X:0};rows.forEach(({t})=>Object.keys(sum).forEach(k=>sum[k]+=t[k]));
   const total=sum.P+sum.Z+sum.V+sum.PZ,rate=total?Math.round((sum.P+sum.Z)/total*100):null;
   const end=S.dates[S.di].getTime(),st=end-13*86400000,w={Z:0,V:0,PZ:0};
-  acts.forEach(a=>{const x=tally(a.marks,st,end);w.Z+=x.Z;w.V+=x.V;w.PZ+=x.PZ});
+  acts.forEach(a=>{const x=tally(a.marks,st,end,jm);w.Z+=x.Z;w.V+=x.V;w.PZ+=x.PZ});
   const sig=sigMsgs(w.Z,w.V,w.PZ);
   const pr=S.T.presence.get(t.key)||null,pc={'Є':0,'Н':0,'О':0},anomalies=[];
   if(pr)S.dates.forEach((d,i)=>{if(!d)return;const ms=d.getTime();if((per.from!==null&&ms<per.from)||(per.to!==null&&ms>per.to))return;
